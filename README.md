@@ -440,6 +440,22 @@ This project demonstrates:
 - LLM narration
 - product thinking
 
+## Acknowledgements
+
+This project was inspired by experiments with Garmin Connect data and the Garmin MCP ecosystem.
+
+Garmin data access in the local prototype uses the `garminconnect` Python package.
+
+This repository is an independent personal coaching prototype and is not affiliated with Garmin.
+
+## License
+
+No open source license has been selected yet.
+
+Copyright © 2026 Kamil Gün. All rights reserved.
+
+This repository is shared publicly for portfolio and educational purposes. Please do not reuse, redistribute, or commercialize the code without permission.
+
 ## Author
 
 Kamil Gün
