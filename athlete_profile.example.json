@@ -1,0 +1,24 @@
+{
+  "name": "Example Athlete",
+  "age": 40,
+  "height_cm": 170,
+  "weight_kg": 75,
+  "current_ftp_watts": 150,
+  "primary_goal": "Build endurance safely",
+  "secondary_goal": "Maintain a consistent running routine",
+  "constraints": [
+    "Training plan should be realistic around work and family life",
+    "Avoid sudden increases in running volume"
+  ],
+  "injury_risks": [],
+  "equipment": [
+    "Garmin watch",
+    "Heart rate strap",
+    "Indoor trainer"
+  ],
+  "weekly_target": {
+    "running_sessions": 2,
+    "cycling_sessions": 1,
+    "strength_or_mobility_sessions": 1
+  }
+}

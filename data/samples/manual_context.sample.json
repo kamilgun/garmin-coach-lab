@@ -1,0 +1,15 @@
+{
+  "context_period": "current_week",
+  "family_status": "normal",
+  "sleep_disrupted": false,
+  "workload": "low",
+  "travel": true,
+  "training_environment": "vacation",
+  "bike_available": false,
+  "trainer_available": false,
+  "running_available": true,
+  "injury_notes": null,
+  "energy_level": "normal",
+  "available_days": ["monday", "wednesday", "friday"],
+  "user_note": "I am on vacation. I can run, but I do not have access to my bike or trainer."
+}

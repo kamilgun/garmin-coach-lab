@@ -1,0 +1,82 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+.venv/
+venv/
+env/
+ENV/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+secrets/
+*.pem
+*.key
+*.crt
+
+# =========================
+# Garmin credentials / tokens
+# =========================
+.garminconnect/
+.garmin_tokens/
+garmin_tokens/
+garminconnect_tokens/
+*.fit
+*.tcx
+*.gpx
+
+# =========================
+# Personal project data / generated artifacts
+# =========================
+data/*
+!data/.gitkeep
+!data/samples/
+!data/samples/**
+
+athlete_profile.json
+manual_context.json
+
+# Generated markdown / reports
+weekly_review.md
+coach_message.md
+llm_coach_prompt.md
+scenario_test_summary.md
+
+# Logs
+*.log
+logs/
+
+# =========================
+# IDE / OS files
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =========================
+# Local scratch / backups
+# =========================
+README_old.md
+*.bak
+*.tmp
