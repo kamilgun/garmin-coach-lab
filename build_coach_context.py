@@ -178,58 +178,114 @@ def has_manual_context_override(manual_context):
 
     return False
 
+def get_cycling_availability(manual_context):
+    bike_available = bool(manual_context.get("bike_available", True))
+    trainer_available = bool(manual_context.get("trainer_available", True))
+
+    if bike_available and trainer_available:
+        return {
+            "available": True,
+            "mode": "bike_or_trainer",
+            "session_text": "kolay Z2 bisiklet/trainer seansı",
+            "unavailable_text": None,
+        }
+
+    if trainer_available:
+        return {
+            "available": True,
+            "mode": "trainer",
+            "session_text": "kolay Z2 trainer seansı",
+            "unavailable_text": None,
+        }
+
+    if bike_available:
+        return {
+            "available": True,
+            "mode": "bike",
+            "session_text": "kolay Z2 bisiklet seansı",
+            "unavailable_text": None,
+        }
+
+    return {
+        "available": False,
+        "mode": "none",
+        "session_text": None,
+        "unavailable_text": "Bu hafta dışarıda bisiklet veya indoor trainer imkanı olmadığı için bisiklet önerisi uygulanabilir değil",
+    }
+
 def apply_context_constraints(decision, manual_context):
-    decision = decision.copy()
+    cycling_availability = get_cycling_availability(manual_context)
 
-    bike_available = manual_context.get("bike_available", True)
-    trainer_available = manual_context.get("trainer_available", True)
-    running_available = manual_context.get("running_available", True)
-    training_environment = manual_context.get("training_environment")
-
-    bike_unavailable = bike_available is False or trainer_available is False
-
-    if bike_unavailable and decision.get("cycling") in [
+    cycling_recommendations = {
         "add_easy_z2",
+        "add_or_maintain_z2",
         "optional_easy_z2",
         "optional_recovery",
         "recovery_only",
-    ]:
+        "recovery",
+    }
+
+    if (
+        decision.get("cycling") in cycling_recommendations
+        and not cycling_availability["available"]
+    ):
         decision["cycling"] = "not_available"
 
-        if decision.get("priority") == "bike":
+        if decision.get("priority") in ["bike", "balanced"]:
             decision["priority"] = "running_consistency"
 
-        decision["reason"] = (
-            decision.get("reason", "")
-            + " Bu hafta bisiklet/trainer imkanı olmadığı için bisiklet önerisi uygulanabilir değil; "
+        decision["reason"] += (
+            f" {cycling_availability['unavailable_text']}; "
             "öncelik koşu ritmini kolay seviyede korumaya ve mobiliteye kaydırıldı."
-        ).strip()
+        )
 
-    if running_available is False:
+    if manual_context.get("running_available") is False:
         decision["running"] = "not_available"
         decision["priority"] = "recovery"
         decision["weekly_load"] = "reduce_or_maintain"
-        decision["reason"] = (
-            decision.get("reason", "")
-            + " Bu hafta koşu imkanı olmadığı için koşu önerisi de çıkarıldı."
-        ).strip()
+        decision["reason"] += (
+            " Bu hafta koşu imkanı olmadığı için koşu önerisi uygulanabilir değil; "
+            "öncelik toparlanma, mobilite ve mümkünse düşük yoğunluklu alternatiflere kaydırıldı."
+        )
 
-    if training_environment == "vacation":
-        decision["reason"] = (
-            decision.get("reason", "")
-            + " Tatil bağlamı nedeniyle planın uygulanabilir ve esnek kalması öncelikli."
-        ).strip()
+    if manual_context.get("training_environment") == "vacation":
+        decision["reason"] += (
+            " Tatil bağlamı nedeniyle planın uygulanabilir ve esnek kalması öncelikli."
+        )
 
     return decision
 
 def build_final_decision(rules, manual_context):
+    cycling_availability = get_cycling_availability(manual_context)
+    cycling_session_text = (
+        cycling_availability["session_text"]
+        or "kolay Z2 bisiklet/trainer seansı"
+    )
+
+    if cycling_availability["available"]:
+        cycling_recommendation_reason = (
+            "Koşu hacmini artırmak yerine mevcut koşu ritmini koruyup "
+            f"{cycling_session_text} eklemek daha güvenli."
+        )
+    else:
+        cycling_recommendation_reason = (
+            "Koşu hacmini artırmak yerine mevcut koşu ritmini kolay seviyede "
+            "korumak daha güvenli."
+        )
+
     context_override = has_manual_context_override(manual_context)
+
+    progression_status = rules.get("progression_status")
+    risk_level = rules.get("risk_level")
+    
 
     if context_override:
         decision = {
             "weekly_load": "reduce_or_maintain",
             "running": "easy_only",
             "cycling": "optional_recovery",
+            "cycling_mode": cycling_availability["mode"],
+            "cycling_session_text": cycling_session_text,
             "strength_or_mobility": "recommended_light",
             "priority": "recovery",
             "context_override_applied": True,
@@ -240,11 +296,13 @@ def build_final_decision(rules, manual_context):
             ),
         }
 
-    elif rules["risk_level"] == "high":
+    elif risk_level == "high":
         decision = {
             "weekly_load": "reduce",
             "running": "easy_only",
             "cycling": "recovery_only",
+            "cycling_mode": cycling_availability["mode"],
+            "cycling_session_text": cycling_session_text,
             "strength_or_mobility": "recommended_light",
             "priority": "recovery",
             "context_override_applied": False,
@@ -254,38 +312,45 @@ def build_final_decision(rules, manual_context):
             ),
         }
 
-    elif rules["progression_status"] in ["sharp_rebuild_low_absolute_load", "caution_growth"]:
+    elif progression_status in ["sharp_rebuild_low_absolute_load", "caution_growth"]:
         decision = {
             "weekly_load": "maintain",
             "running": "maintain_easy",
             "cycling": "add_easy_z2",
+            "cycling_mode": cycling_availability["mode"],
+            "cycling_session_text": cycling_session_text,
             "strength_or_mobility": "recommended",
             "priority": "bike",
             "context_override_applied": False,
             "reason": (
-                "Load ratio yüksek ama mutlak hacim düşük. Koşu hacmini artırmak yerine "
-                "mevcut koşu ritmini koruyup kolay Z2 bisiklet eklemek daha güvenli."
+                "Load ratio yüksek ama mutlak hacim düşük. "
+                f"{cycling_recommendation_reason}"
             ),
         }
 
-    elif rules["progression_status"] in ["stable", "productive_build"]:
+    elif progression_status in ["stable", "productive_build"]:
         decision = {
             "weekly_load": "controlled_build",
             "running": "controlled_increase",
             "cycling": "add_or_maintain_z2",
+            "cycling_mode": cycling_availability["mode"],
+            "cycling_session_text": cycling_session_text,
             "strength_or_mobility": "recommended",
             "priority": "balanced",
             "context_override_applied": False,
             "reason": (
-                "Yük dengeli görünüyor. Haftalık hacim küçük ve kontrollü şekilde artırılabilir."
+                "Yük dengeli görünüyor. Haftalık hacim küçük ve kontrollü şekilde artırılabilir. "
+                f"{cycling_recommendation_reason}"  
             ),
         }
 
-    elif rules["progression_status"] in ["below_baseline", "restart", "insufficient_data"]:
+    elif progression_status in ["below_baseline", "restart", "insufficient_data"]:
         decision = {
             "weekly_load": "restart_easy",
             "running": "easy_only",
             "cycling": "optional_easy_z2",
+            "cycling_mode": cycling_availability["mode"],
+            "cycling_session_text": cycling_session_text,
             "strength_or_mobility": "recommended",
             "priority": "consistency",
             "context_override_applied": False,
@@ -299,12 +364,14 @@ def build_final_decision(rules, manual_context):
             "weekly_load": "maintain",
             "running": "maintain_easy",
             "cycling": "add_easy_z2",
+            "cycling_mode": cycling_availability["mode"],
+            "cycling_session_text": cycling_session_text,
             "strength_or_mobility": "recommended",
             "priority": "bike",
             "context_override_applied": False,
             "reason": (
-                "Load ratio yüksek ama mutlak hacim düşük. Koşu hacmini artırmak yerine "
-                "mevcut koşu ritmini koruyup kolay Z2 bisiklet eklemek daha güvenli."
+                "Load ratio yüksek ama mutlak hacim düşük. "
+                f"{cycling_recommendation_reason}"
             ),
         }
 

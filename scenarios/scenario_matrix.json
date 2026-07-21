@@ -121,5 +121,30 @@
       "running": "not_available",
       "priority": "recovery"
     }
+  },
+  {
+  "name": "trainer_only_no_outdoor_bike",
+  "manual_context": {
+    "context_period": "current_week",
+    "family_status": "normal",
+    "sleep_disrupted": false,
+    "workload": "normal",
+    "travel": false,
+    "training_environment": "home",
+    "bike_available": false,
+    "trainer_available": true,
+    "running_available": true,
+    "injury_notes": null,
+    "energy_level": "normal",
+    "available_days": ["monday", "wednesday", "friday"],
+    "user_note": "Outdoor cycling is not available, but indoor trainer is available."
+  },
+  "expected": {
+    "weekly_load": "maintain",
+    "running": "maintain_easy",
+    "cycling": "add_easy_z2",
+    "priority": "bike",
+    "context_override_applied": false
   }
+}
 ]

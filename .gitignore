@@ -80,3 +80,7 @@ Thumbs.db
 README_old.md
 *.bak
 *.tmp
+
+# Local AI/tooling folders
+.agents/
+.claude/

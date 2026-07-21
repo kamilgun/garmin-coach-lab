@@ -1,3 +1,4 @@
 garminconnect
 openai
 python-dotenv
+streamlit
