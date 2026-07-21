@@ -35,6 +35,73 @@ def run_step(name, command, allow_fail=False):
 
     return True
 
+def load_env_file_if_available():
+    if not os.path.exists(".env"):
+        print(".env file: NOT FOUND")
+        return
+
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        print(".env file: FOUND, but python-dotenv is not installed")
+        return
+
+    load_dotenv()
+    print(".env file: LOADED")
+
+
+def can_import(module_name):
+    try:
+        __import__(module_name)
+        return True
+    except ImportError:
+        return False
+
+
+def preflight_check(args, python_executable):
+    print("\n=== Preflight Check ===")
+    print(f"Python executable: {python_executable}")
+    print(f"Working directory: {os.getcwd()}")
+
+    load_env_file_if_available()
+
+    errors = []
+
+    if not args.skip_garmin:
+        if can_import("garminconnect"):
+            print("garminconnect: OK")
+        else:
+            errors.append(
+                "garminconnect paketi bulunamadı. "
+                "Çözüm: python -m pip install -r requirements.txt"
+            )
+
+    if not args.skip_llm:
+        if can_import("openai"):
+            print("openai: OK")
+        else:
+            errors.append(
+                "openai paketi bulunamadı. "
+                "Çözüm: python -m pip install -r requirements.txt"
+            )
+
+        if os.getenv("OPENAI_API_KEY"):
+            print("OPENAI_API_KEY: OK")
+        else:
+            errors.append(
+                "OPENAI_API_KEY bulunamadı. "
+                ".env dosyası oluştur veya terminalde OPENAI_API_KEY tanımla."
+            )
+
+    if errors:
+        error_message = "\n".join(f"- {error}" for error in errors)
+        raise RuntimeError(
+            "Preflight check başarısız oldu:\n"
+            f"{error_message}"
+        )
+
+    print("Preflight check: OK")
+
 
 def print_artifacts(skip_llm):
     print("\n=== Pipeline tamamlandı ===")
@@ -76,6 +143,8 @@ def main():
     args = parser.parse_args()
 
     python_executable = sys.executable
+
+    preflight_check(args, python_executable)
 
     print("\nGarmin Coach Lab Pipeline")
     print("=========================")

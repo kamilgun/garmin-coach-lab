@@ -1,6 +1,11 @@
 from openai import OpenAI
 import os
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 DEFAULT_MODEL = "gpt-4.1-mini"
 
