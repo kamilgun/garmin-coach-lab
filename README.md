@@ -74,6 +74,8 @@ It can currently:
 - render a technical weekly Markdown report
 - generate a controlled LLM prompt
 - generate a user-facing coach message via OpenAI API
+- perform preflight checks for local dependencies and environment variables
+- validate decision behavior with scenario matrix tests
 
 ## Architecture
 
@@ -203,7 +205,14 @@ The LLM does not decide the plan. It only explains the decision already made by 
 
 ```text
 garmin-coach-lab/
-  athlete_profile.json
+  README.md
+  .gitignore
+  requirements.txt
+  .env.example
+
+  athlete_profile.example.json
+  athlete_profile.json              # local only, ignored by Git
+
   activity_metrics.py
   performance_metrics.py
   build_coach_context.py
@@ -211,6 +220,7 @@ garmin-coach-lab/
   generate_llm_prompt.py
   generate_coach_message.py
   run_pipeline.py
+  run_scenario_matrix.py
 
   coach_engine/
     metrics/
@@ -223,45 +233,94 @@ garmin-coach-lab/
       llm_prompt.py
       llm_client.py
 
+  scenarios/
+    scenario_matrix.json
+
   data/
-    activity_summary.json
-    performance_summary.json
-    manual_context.json
-    coach_context.json
-    weekly_review.md
-    llm_coach_prompt.md
-    coach_message.md
+    .gitkeep
+    activity_summary.json            # generated locally, ignored by Git
+    performance_summary.json         # generated locally, ignored by Git
+    manual_context.json              # generated locally, ignored by Git
+    coach_context.json               # generated locally, ignored by Git
+    weekly_review.md                 # generated locally, ignored by Git
+    llm_coach_prompt.md              # generated locally, ignored by Git
+    coach_message.md                 # generated locally, ignored by Git
+    samples/
+      activity_summary.sample.json
+      performance_summary.sample.json
+      manual_context.sample.json
 ```
 
-## How to run
+## Setup
 
-### 1. Activate virtual environment
+This project is designed to run locally with Python.
+
+### 1. Create and activate a virtual environment
+
+On Windows:
 
 ```cmd
+python -m venv .venv
 .\.venv\Scripts\activate
 ```
 
-### 2. Update current context
+### 2. Install dependencies
+
+```cmd
+python -m pip install -r requirements.txt
+```
+
+### 3. Configure environment variables
+
+Copy the example environment file:
+
+```cmd
+copy .env.example .env
+```
+
+Then open `.env` and set your OpenAI API key:
+
+```text
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+The `.env` file is intentionally ignored by Git.
+
+### 4. Create your local athlete profile
+
+```cmd
+copy athlete_profile.example.json athlete_profile.json
+```
+
+Edit `athlete_profile.json` with your own profile, goals, constraints, weekly targets, and available equipment.
+
+This file is ignored by Git because it may contain personal information.
+
+### 5. Enter current manual context
+
+Before generating a coaching decision, enter the current weekly context:
 
 ```cmd
 python update_manual_context.py
 ```
 
-This updates:
+This creates:
 
 ```text
 data/manual_context.json
 ```
 
-### 3. Run full pipeline
+Manual context captures information that Garmin does not know, such as travel, sleep disruption, family load, available equipment, training environment, energy level, and active pain notes.
+
+### 6. Run the pipeline
+
+Full pipeline:
 
 ```cmd
 python run_pipeline.py
 ```
 
-This refreshes Garmin data, rebuilds coach context, renders reports, and generates the LLM coach message.
-
-## Pipeline options
+This refreshes Garmin data, rebuilds coach context, renders reports, generates the controlled LLM prompt, and generates the user-facing coach message.
 
 Run without refreshing Garmin data:
 
@@ -275,26 +334,71 @@ Run without calling the LLM API:
 python run_pipeline.py --skip-llm
 ```
 
-Run only local deterministic steps:
+Run fully offline from existing local data:
 
 ```cmd
 python run_pipeline.py --skip-garmin --skip-llm
 ```
 
+### 7. Run scenario tests
+
+The scenario matrix validates that the decision engine behaves correctly across different life contexts.
+
+```cmd
+python run_scenario_matrix.py
+```
+
+Example scenarios include:
+
+- normal home week
+- vacation without bike or trainer
+- child sick / disrupted sleep week
+- active injury note
+- no running availability
+
+The test summary is generated locally under:
+
+```text
+data/scenario_matrix_summary.md
+```
+
+## Pipeline preflight checks
+
+`run_pipeline.py` performs a lightweight preflight check before running the pipeline.
+
+It checks:
+
+```text
+- active Python executable
+- working directory
+- .env loading status
+- garminconnect availability, unless Garmin refresh is skipped
+- openai availability, unless LLM generation is skipped
+- OPENAI_API_KEY availability, unless LLM generation is skipped
+```
+
+This makes setup problems easier to diagnose, especially when switching between local repositories or virtual environments.
+
 ## OpenAI API key
 
 The LLM step requires an OpenAI API key.
 
-Temporary CMD session setup:
+Recommended local setup:
+
+```cmd
+copy .env.example .env
+```
+
+Then edit `.env`:
+
+```text
+OPENAI_API_KEY=your_openai_api_key_here
+```
+
+Temporary CMD session setup is also possible:
 
 ```cmd
 set OPENAI_API_KEY=your_api_key_here
-```
-
-Then run:
-
-```cmd
-python run_pipeline.py --skip-garmin
 ```
 
 Do not commit API keys to Git.
@@ -384,12 +488,19 @@ This project may contain sensitive personal data such as:
 Recommended files to keep private or exclude from public repositories:
 
 ```text
-data/
+data/activity_summary.json
+data/performance_summary.json
+data/manual_context.json
+data/coach_context.json
+data/weekly_review.md
+data/llm_coach_prompt.md
+data/coach_message.md
+athlete_profile.json
 .env
 *.log
 ```
 
-Use anonymized sample files for public demos.
+Use anonymized sample files under `data/samples/` for public demos.
 
 ## Disclaimer
 
@@ -401,11 +512,18 @@ It is not medical advice, does not diagnose injuries, and should not replace a q
 
 ### Phase 1 — Local MVP stabilization
 
-- improve rule coverage
-- add more scenario tests
-- improve context intake
+Completed:
+
 - add environment checks to the pipeline
-- clean up generated artifacts
+- add scenario matrix tests
+- add anonymized sample data for public demos
+- keep personal generated artifacts out of Git
+
+Next:
+
+- improve rule coverage
+- improve context intake
+- clean up exploratory scripts and generated artifacts
 
 ### Phase 2 — Streamlit interface
 
