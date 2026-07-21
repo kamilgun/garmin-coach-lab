@@ -1,0 +1,125 @@
+[
+  {
+    "name": "normal_home",
+    "manual_context": {
+      "context_period": "current_week",
+      "family_status": "normal",
+      "sleep_disrupted": false,
+      "workload": "normal",
+      "travel": false,
+      "training_environment": "home",
+      "bike_available": true,
+      "trainer_available": true,
+      "running_available": true,
+      "injury_notes": null,
+      "energy_level": "normal",
+      "available_days": [],
+      "user_note": null
+    },
+    "expected": {
+      "weekly_load": "maintain",
+      "running": "maintain_easy",
+      "cycling": "add_easy_z2",
+      "priority": "bike",
+      "context_override_applied": false
+    }
+  },
+  {
+    "name": "vacation_no_bike",
+    "manual_context": {
+      "context_period": "current_week",
+      "family_status": "normal",
+      "sleep_disrupted": false,
+      "workload": "low",
+      "travel": true,
+      "training_environment": "vacation",
+      "bike_available": false,
+      "trainer_available": false,
+      "running_available": true,
+      "injury_notes": null,
+      "energy_level": "normal",
+      "available_days": ["monday", "wednesday", "friday"],
+      "user_note": "I am on vacation. I can run, but I do not have access to my bike or trainer."
+    },
+    "expected": {
+      "weekly_load": "maintain",
+      "running": "maintain_easy",
+      "cycling": "not_available",
+      "priority": "running_consistency",
+      "context_override_applied": false
+    }
+  },
+  {
+    "name": "child_sick_week",
+    "manual_context": {
+      "context_period": "current_week",
+      "family_status": "child_sick",
+      "sleep_disrupted": true,
+      "workload": "normal",
+      "travel": false,
+      "training_environment": "home",
+      "bike_available": true,
+      "trainer_available": true,
+      "running_available": true,
+      "injury_notes": null,
+      "energy_level": "low",
+      "available_days": ["sunday"],
+      "user_note": "Child was sick and sleep was disrupted."
+    },
+    "expected": {
+      "weekly_load": "reduce_or_maintain",
+      "running": "easy_only",
+      "cycling": "optional_recovery",
+      "priority": "recovery",
+      "context_override_applied": true
+    }
+  },
+  {
+    "name": "active_injury_note",
+    "manual_context": {
+      "context_period": "current_week",
+      "family_status": "normal",
+      "sleep_disrupted": false,
+      "workload": "normal",
+      "travel": false,
+      "training_environment": "home",
+      "bike_available": true,
+      "trainer_available": true,
+      "running_available": true,
+      "injury_notes": "Mild discomfort during running.",
+      "energy_level": "normal",
+      "available_days": [],
+      "user_note": "There is a mild active pain note."
+    },
+    "expected": {
+      "weekly_load": "reduce_or_maintain",
+      "running": "easy_only",
+      "cycling": "optional_recovery",
+      "priority": "recovery",
+      "context_override_applied": true
+    }
+  },
+  {
+    "name": "no_running_available",
+    "manual_context": {
+      "context_period": "current_week",
+      "family_status": "normal",
+      "sleep_disrupted": false,
+      "workload": "normal",
+      "travel": true,
+      "training_environment": "travel",
+      "bike_available": true,
+      "trainer_available": true,
+      "running_available": false,
+      "injury_notes": null,
+      "energy_level": "normal",
+      "available_days": [],
+      "user_note": "Running is not available this week."
+    },
+    "expected": {
+      "weekly_load": "reduce_or_maintain",
+      "running": "not_available",
+      "priority": "recovery"
+    }
+  }
+]

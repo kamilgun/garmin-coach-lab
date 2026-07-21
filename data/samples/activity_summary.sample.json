@@ -1,0 +1,20 @@
+{
+  "summary_7_days": {
+    "days": 7,
+    "activity_count": 3,
+    "running_count": 3,
+    "cycling_count": 0,
+    "total_hours": 1.52,
+    "total_km": 14.01,
+    "avg_hr": 145.7
+  },
+  "summary_30_days": {
+    "days": 30,
+    "activity_count": 6,
+    "running_count": 6,
+    "cycling_count": 0,
+    "total_hours": 3.79,
+    "total_km": 35.02,
+    "avg_hr": 145.7
+  }
+}

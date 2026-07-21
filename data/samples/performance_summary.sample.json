@@ -1,0 +1,9 @@
+{
+  "race_predictor": {
+    "calendar_date": "2026-01-01",
+    "5k": "0:25:12",
+    "10k": "0:55:42",
+    "half_marathon": "2:12:06",
+    "marathon": "5:05:35"
+  }
+}
