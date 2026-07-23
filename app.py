@@ -469,28 +469,249 @@ def render_hero(coach_context):
 
     if not coach_context:
         st.info(
-            "Henüz coach_context.json bulunamadı. Soldan context kaydedip "
-            "sample data ile pipeline çalıştırarak başlayabilirsin."
+            "Başlamak için soldan context kaydet, sample data seç veya mevcut local data ile pipeline çalıştır."
         )
         return
 
     final_decision = coach_context.get("final_decision", {})
     rules = coach_context.get("rules", {})
-
-    progression_label = label(rules.get("progression_status"))
     manual_context = coach_context.get("manual_context", {})
-    priority_label = priority_action_label(final_decision.get("priority"), manual_context)
+
+    priority_label = priority_action_label(
+        final_decision.get("priority"),
+        manual_context,
+    )
 
     st.markdown(
         f"""
-        ### Bu haftanın özeti
+        ### Haftalık koç özeti
 
-        **Karar:** {label(final_decision.get("weekly_load"))}  
-        **Ana odak:** {priority_label}  
-        **Progression sinyali:** {progression_label}
+        **{label(final_decision.get("weekly_load"))}** · {priority_label} · {label(rules.get("progression_status"))}
         """
     )
 
+def build_action_items(coach_context):
+    if not coach_context:
+        return []
+
+    final_decision = coach_context.get("final_decision", {})
+    rules = coach_context.get("rules", {})
+
+    running = final_decision.get("running")
+    cycling = final_decision.get("cycling")
+    weekly_load = final_decision.get("weekly_load")
+    strength = final_decision.get("strength_or_mobility")
+
+    cycling_session_text = (
+        final_decision.get("cycling_session_text")
+        or "kolay Z2 bisiklet/trainer seansı"
+    )
+
+    actions = []
+
+    if running == "maintain_easy":
+        actions.append(
+            "Koşu ritmini koru; koşuları kolay tempoda ve kontrollü tut."
+        )
+    elif running == "easy_only":
+        actions.append(
+            "Koşu yapacaksan sadece kolay koşu yap; performans zorlaması ekleme."
+        )
+    elif running == "controlled_increase":
+        actions.append(
+            "Koşu hacmini yalnızca küçük ve kontrollü bir artışla ilerlet."
+        )
+    elif running == "not_available":
+        actions.append(
+            "Bu hafta koşu mümkün değil; koşu yerine toparlanma ve uygun alternatiflere odaklan."
+        )
+
+    if cycling in ["add_easy_z2", "add_or_maintain_z2"]:
+        actions.append(
+            f"{cycling_session_text.capitalize()} ekleyerek aerobik yükü koşuyu artırmadan destekle."
+        )
+    elif cycling in ["optional_easy_z2", "optional_recovery", "recovery_only"]:
+        actions.append(
+            f"Uygun hissedersen düşük yoğunluklu {cycling_session_text} yapabilirsin."
+        )
+    elif cycling == "not_available":
+        actions.append(
+            "Bu hafta bisiklet/trainer antrenmanı uygulanabilir değil; planı buna göre sade tut."
+        )
+
+    if strength in ["recommended", "recommended_light"]:
+        actions.append(
+            "Haftaya kısa bir mobilite/core seansı ekle."
+        )
+
+    if weekly_load in ["reduce", "reduce_or_maintain"]:
+        actions.insert(
+            0,
+            "Bu hafta ana hedef yük artırmak değil; toparlanmayı ve sürdürülebilirliği korumak."
+        )
+    elif weekly_load in ["maintain", "restart_easy"]:
+        actions.insert(
+            0,
+            "Bu hafta ana hedef düzeni korumak; ekstra yük bindirmemek."
+        )
+
+    return actions[:3]
+
+
+def build_avoid_items(coach_context):
+    if not coach_context:
+        return []
+
+    final_decision = coach_context.get("final_decision", {})
+    rules = coach_context.get("rules", {})
+
+    avoids = []
+
+    if not rules.get("intervals_allowed"):
+        avoids.append("Interval, tempo koşusu veya yüksek yoğunluklu antrenman ekleme.")
+
+    if final_decision.get("weekly_load") in ["maintain", "reduce", "reduce_or_maintain", "restart_easy"]:
+        avoids.append("Koşu hacmini bu hafta belirgin şekilde artırma.")
+
+    if final_decision.get("running") in ["easy_only", "maintain_easy"]:
+        avoids.append("Koşuları yarış temposuna veya zorlayıcı tempoya taşıma.")
+
+    if final_decision.get("cycling") == "not_available":
+        avoids.append("Bisiklet/trainer imkanı yoksa bunu telafi etmek için koşu yükünü artırma.")
+
+    if not avoids:
+        avoids.append("Plan dışı sert antrenman ekleme; kontrollü ilerle.")
+
+    return avoids[:3]
+
+
+def render_main_output(coach_context):
+    st.subheader("Bu hafta ne yapmalıyım?")
+
+    if not coach_context:
+        st.info("Önce context kaydedip pipeline çalıştırınca burada haftalık aksiyon özeti görünecek.")
+        return
+
+    final_decision = coach_context.get("final_decision", {})
+    rules = coach_context.get("rules", {})
+    manual_context = coach_context.get("manual_context", {})
+
+    action_items = build_action_items(coach_context)
+    avoid_items = build_avoid_items(coach_context)
+
+    col1, col2 = st.columns([1.2, 1])
+
+    with col1:
+        action_html = "".join(f"<li>{item}</li>" for item in action_items)
+        st.markdown(
+            f"""
+            <div class="coach-card coach-card-action">
+                <h3>Bu hafta yap</h3>
+                <ul>{action_html}</ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col2:
+        avoid_html = "".join(f"<li>{item}</li>" for item in avoid_items)
+        st.markdown(
+            f"""
+            <div class="coach-card coach-card-avoid">
+                <h3>Bu hafta kaçın</h3>
+                <ul>{avoid_html}</ul>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
+def render_primary_coach_message():
+    coach_message = read_text(COACH_MESSAGE_PATH)
+
+    st.subheader("Koç mesajı")
+
+    if not coach_message:
+        st.info(
+            "Henüz LLM koç mesajı yok. Soldaki 'LLM coach message üret' seçeneğini açıp pipeline çalıştırırsan burada görünecek."
+        )
+        return
+
+    preview_lines = [
+        line.strip()
+        for line in coach_message.splitlines()
+        if line.strip() and not line.strip().startswith("##")
+    ]
+
+    preview_text = " ".join(preview_lines[:2])
+
+    if len(preview_text) > 420:
+        preview_text = preview_text[:420].rstrip() + "..."
+
+    with st.container(border=True):
+        st.markdown("#### Kısa özet")
+
+        if preview_text:
+            st.write(preview_text)
+        else:
+            st.markdown(coach_message)
+
+        with st.expander("Detaylı koç mesajını göster"):
+            st.markdown(coach_message)
+
+            st.divider()
+
+            st.markdown("#### Kopyalanabilir metin")
+            st.code(coach_message, language="markdown")
+
+            st.download_button(
+                label="Koç mesajını indir",
+                data=coach_message,
+                file_name="coach_message.md",
+                mime="text/markdown",
+                key="download_primary_coach_message",
+            )
+
+
+def render_compact_metrics(coach_context):
+    st.subheader("Antrenman özeti")
+
+    if not coach_context:
+        st.info("Henüz metrics yok.")
+        return
+
+    metrics = coach_context.get("metrics", {})
+    performance = coach_context.get("performance", {})
+
+    with st.container(border=True):
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+            st.markdown("**Son 7 gün**")
+            st.write(f"Süre: `{metrics.get('total_hours_7_days', '-')}` saat")
+            st.write(f"Mesafe: `{metrics.get('weekly_distance_km', '-')}` km")
+            st.write(f"Koşu: `{metrics.get('running_sessions', '-')}` seans")
+            st.write(f"Bisiklet: `{metrics.get('cycling_sessions', '-')}` seans")
+
+        with col2:
+            st.markdown("**Son 30 gün**")
+            st.write(f"Süre: `{metrics.get('total_hours_30_days', '-')}` saat")
+            st.write(f"Mesafe: `{metrics.get('monthly_distance_km', '-')}` km")
+            st.write(f"Ortalama nabız: `{metrics.get('avg_hr_30_days', '-')}`")
+            st.write(f"7g ort. nabız: `{metrics.get('avg_hr_7_days', '-')}`")
+
+        with col3:
+            st.markdown("**Yük sinyali**")
+            st.write(f"Load ratio: `{metrics.get('load_ratio', '-')}`")
+            st.write(f"Haftalık baseline: `{metrics.get('weekly_baseline_hours', '-')}` saat")
+            st.write(f"30g haftalık ort.: `{metrics.get('rolling_30_weekly_hours', '-')}` saat")
+            st.write(f"Önceki tempo: `{metrics.get('previous_23_weekly_hours', '-')}` saat")
+
+    race_predictor = performance.get("race_predictor")
+
+    if race_predictor:
+        with st.expander("Garmin Race Predictor sinyali"):
+            st.json(race_predictor)
 
 def render_decision_cards(coach_context):
     st.subheader("Koç kararı")
@@ -683,14 +904,14 @@ def render_feedback_form(coach_context):
     st.success("Feedback kaydedildi. Bu ileride karar motorunu kişiselleştirmek için kullanılabilir.")
 
 def render_reports(coach_context):
-    st.subheader("Raporlar")
+    st.subheader("Teknik detaylar")
 
     weekly_review = read_text(WEEKLY_REVIEW_PATH)
     coach_message = read_text(COACH_MESSAGE_PATH)
 
     tab1, tab2, tab3, tab4 = st.tabs(
         [
-            "Koç mesajı",
+            "Koç mesajı arşivi",
             "Teknik haftalık rapor",
             "Teknik context",
             "Çalıştırma logu",
@@ -712,6 +933,7 @@ def render_reports(coach_context):
                 data=coach_message,
                 file_name="coach_message.md",
                 mime="text/markdown",
+                key="download_reports_coach_message",
             )
         else:
             st.info(
@@ -746,6 +968,156 @@ def render_reports(coach_context):
             if stderr:
                 st.code(stderr, language="text")
 
+def inject_custom_css():
+    st.markdown(
+        """
+        <style>
+        /* App background */
+        .stApp {
+            background: linear-gradient(180deg, #f7fbf8 0%, #ffffff 42%);
+            color: #172033;
+        }
+
+        /* Main content spacing */
+        .block-container {
+            padding-top: 2.2rem;
+            padding-bottom: 3rem;
+            max-width: 1180px;
+        }
+
+        /* Sidebar */
+        [data-testid="stSidebar"] {
+            background: #eef5f2;
+            border-right: 1px solid #d9e7e0;
+        }
+
+        [data-testid="stSidebar"] h2,
+        [data-testid="stSidebar"] h3 {
+            color: #163b34;
+        }
+
+        /* Top header */
+        [data-testid="stHeader"] {
+            background: rgba(247, 251, 248, 0.85);
+        }
+
+        /* Headings */
+        h1 {
+            color: #102820;
+            letter-spacing: -0.03em;
+        }
+
+        h2, h3 {
+            color: #163b34;
+            letter-spacing: -0.02em;
+        }
+
+        /* Generic bordered containers */
+        [data-testid="stVerticalBlockBorderWrapper"] {
+            border: 1px solid #dce8e2;
+            border-radius: 16px;
+            background: #ffffff;
+            box-shadow: 0 6px 18px rgba(24, 58, 49, 0.05);
+        }
+
+        /* Metrics */
+        [data-testid="stMetric"] {
+            background: #ffffff;
+            border: 1px solid #e2ebe6;
+            border-radius: 14px;
+            padding: 14px 16px;
+            box-shadow: 0 4px 14px rgba(24, 58, 49, 0.04);
+        }
+
+        [data-testid="stMetricLabel"] {
+            color: #5f6f68;
+            font-weight: 600;
+        }
+
+        [data-testid="stMetricValue"] {
+            color: #163b34;
+        }
+
+        /* Buttons */
+        .stButton > button {
+            border-radius: 10px;
+            border: 1px solid #bdd8cc;
+            background: #ffffff;
+            color: #163b34;
+            font-weight: 600;
+        }
+
+        .stButton > button:hover {
+            border-color: #4c9a7c;
+            color: #0f5f49;
+            background: #f2faf6;
+        }
+
+        /* Download button */
+        .stDownloadButton > button {
+            border-radius: 10px;
+            border: 1px solid #bdd8cc;
+            background: #e8f5ef;
+            color: #163b34;
+            font-weight: 600;
+        }
+
+        /* Tabs */
+        button[data-baseweb="tab"] {
+            font-weight: 600;
+        }
+
+        /* Info / success boxes slightly softer */
+        [data-testid="stAlert"] {
+            border-radius: 14px;
+        }
+
+        /* Expander */
+        details {
+            border-radius: 12px;
+        }
+
+        /* Small helper cards */
+        .coach-card {
+            border-radius: 16px;
+            padding: 18px 20px;
+            border: 1px solid #dce8e2;
+            box-shadow: 0 6px 18px rgba(24, 58, 49, 0.05);
+            margin-bottom: 8px;
+        }
+
+        .coach-card h3 {
+            margin-top: 0;
+            margin-bottom: 12px;
+        }
+
+        .coach-card ul {
+            margin-bottom: 0;
+        }
+
+        .coach-card-action {
+            background: #f0faf4;
+            border-color: #cce8d7;
+        }
+
+        .coach-card-avoid {
+            background: #fff8ed;
+            border-color: #f1dfbf;
+        }
+
+        .coach-card-message {
+            background: #ffffff;
+            border-color: #dce8e2;
+        }
+
+        .muted-caption {
+            color: #6b7a75;
+            font-size: 0.9rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 def main():
     st.set_page_config(
@@ -753,6 +1125,8 @@ def main():
         page_icon="🏃",
         layout="wide",
     )
+
+    inject_custom_css()
 
     ensure_data_dir()
 
@@ -776,7 +1150,11 @@ def main():
 
     st.divider()
 
-    render_status_pills()
+    render_main_output(coach_context)
+
+    st.divider()
+
+    render_primary_coach_message()
 
     st.divider()
 
@@ -784,7 +1162,7 @@ def main():
 
     st.divider()
 
-    render_metrics(coach_context)
+    render_compact_metrics(coach_context)
 
     st.divider()
 
@@ -793,6 +1171,11 @@ def main():
     st.divider()
 
     render_feedback_form(coach_context)
+
+    st.divider()
+
+    with st.expander("Local dosya durumu"):
+        render_status_pills()
 
     st.divider()
 
