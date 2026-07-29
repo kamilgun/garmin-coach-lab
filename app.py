@@ -23,30 +23,89 @@ SAMPLE_ACTIVITY_SUMMARY_PATH = SAMPLES_DIR / "activity_summary.sample.json"
 SAMPLE_PERFORMANCE_SUMMARY_PATH = SAMPLES_DIR / "performance_summary.sample.json"
 
 
-FAMILY_STATUS_OPTIONS = {
-    "Normal": "normal",
-    "Aile yoğun": "family_busy",
-    "Çocuk hasta": "child_sick",
+WEEKLY_INTENT_OPTIONS = {
+    "Toparlanmak": "recover",
+    "Ritmi korumak": "maintain_consistency",
+    "Kontrollü gelişmek": "build_carefully",
+    "Aradan sonra geri dönmek": "return_after_break",
+    "Yarışa hazırlanmak": "race_specific",
 }
 
-WORKLOAD_OPTIONS = {
-    "Düşük": "low",
-    "Normal": "normal",
-    "Yüksek": "high",
-    "Çok yüksek": "very_high",
+MAX_SESSIONS_OPTIONS = {
+    "1 seans": 1,
+    "2 seans": 2,
+    "3 seans": 3,
+    "4 seans": 4,
+    "5+ seans": 5,
 }
 
-TRAINING_ENVIRONMENT_OPTIONS = {
-    "Ev rutini": "home",
-    "Tatil": "vacation",
-    "Seyahat": "travel",
+MAX_DURATION_OPTIONS = {
+    "30 dk": 30,
+    "45 dk": 45,
+    "60 dk": 60,
+    "75 dk": 75,
+    "90+ dk": 90,
 }
 
 ENERGY_LEVEL_OPTIONS = {
+    "Çok düşük": "very_low",
     "Düşük": "low",
     "Normal": "normal",
+    "İyi": "high",
+}
+
+SLEEP_QUALITY_OPTIONS = {
+    "Kötü": "poor",
+    "Orta": "okay",
+    "İyi": "good",
+}
+
+MENTAL_FATIGUE_OPTIONS = {
+    "Düşük": "low",
+    "Orta": "medium",
     "Yüksek": "high",
 }
+
+MUSCLE_SORENESS_OPTIONS = {
+    "Yok": "none",
+    "Hafif": "low",
+    "Orta": "medium",
+    "Belirgin": "high",
+}
+
+HEALTH_STATUS_OPTIONS = {
+    "Yok": "none",
+    "Ağrı veya fiziksel rahatsızlık var": "pain",
+    "Hastalıktan yeni dönüyorum": "recovering",
+    "Şu an hastayım": "active",
+}
+
+PAIN_SEVERITY_OPTIONS = {
+    "Hafif": 2,
+    "Orta": 5,
+    "Belirgin": 8,
+}
+
+PAIN_AREA_OPTIONS = {
+    "Ayak / ayak bileği": "foot",
+    "Baldır": "calf",
+    "Diz": "knee",
+    "Kalça": "hip",
+    "Bel": "lower_back",
+    "Omuz": "shoulder",
+    "Diğer": "other",
+}
+
+LIFE_EVENT_OPTIONS = [
+    "İş yoğunluğu",
+    "Aile / çocuk yoğunluğu",
+    "Bakım sorumluluğu",
+    "Seyahat",
+    "Rutin dışı bir hafta",
+    "Çok az zaman",
+    "Duygusal olarak zor bir hafta",
+    "Çok yoğun / kapasitem çok sınırlı",
+]
 
 AVAILABLE_DAY_OPTIONS = {
     "Pazartesi": "monday",
@@ -76,24 +135,6 @@ LABELS = {
     "optional": "Opsiyonel",
     "running_consistency": "Koşu ritmini koruma",
     "recovery": "Toparlanma",
-    # rules
-    "low": "Düşük",
-    "medium": "Orta",
-    "high": "Yüksek",
-    "caution_growth": "Dikkatli artış",
-    "stable": "Stabil",
-    "productive_build": "Üretken artış",
-    "restart": "Yeniden başlangıç",
-    "below_baseline": "Baz çizginin altında",
-    "spike_risk": "Ani yük artışı riski",
-    "sharp_rebuild_low_absolute_load": "Hızlı dönüş / düşük mutlak yük",
-    # context
-    "normal": "Normal",
-    "family_busy": "Aile yoğun",
-    "child_sick": "Çocuk hasta",
-    "home": "Ev rutini",
-    "vacation": "Tatil",
-    "travel": "Seyahat",
     "reduce": "Azalt",
     "recovery_only": "Sadece toparlanma",
     "controlled_build": "Kontrollü artır",
@@ -103,8 +144,47 @@ LABELS = {
     "restart_easy": "Kolay yeniden başlangıç",
     "optional_easy_z2": "Opsiyonel kolay Z2",
     "consistency": "Ritmi yeniden kurma",
-    "recommended_light": "Hafif mobilite/core önerilir",
+    # rules
+    "low": "Düşük",
+    "medium": "Orta",
+    "high": "Yüksek",
+    "very_high": "Çok yüksek",
+    "very_low": "Çok düşük",
+    "caution_growth": "Dikkatli artış",
+    "stable": "Stabil",
+    "productive_build": "Üretken artış",
+    "restart": "Yeniden başlangıç",
+    "below_baseline": "Baz çizginin altında",
+    "spike_risk": "Ani yük artışı riski",
+    "sharp_rebuild_low_absolute_load": "Hızlı dönüş / düşük mutlak yük",
+    # weekly check-in
+    "recover": "Toparlanmak",
+    "maintain_consistency": "Ritmi korumak",
+    "build_carefully": "Kontrollü gelişmek",
+    "return_after_break": "Aradan sonra geri dönmek",
+    "race_specific": "Yarışa hazırlanmak",
+    "poor": "Kötü",
+    "okay": "Orta",
+    "good": "İyi",
+    "none": "Yok",
+    "active": "Şu an hastayım",
+    "recovering": "Hastalıktan yeni dönüyorum",
+    "foot": "Ayak / ayak bileği",
+    "calf": "Baldır",
+    "knee": "Diz",
+    "hip": "Kalça",
+    "lower_back": "Bel",
+    "shoulder": "Omuz",
+    "other": "Diğer",
+    # legacy context
+    "normal": "Normal",
+    "family_busy": "Aile yoğun",
+    "child_sick": "Çocuk hasta",
+    "home": "Ev rutini",
+    "vacation": "Tatil",
+    "travel": "Seyahat",
 }
+
 
 
 def label(value):
@@ -115,8 +195,20 @@ def label(value):
     return LABELS.get(value, str(value))
 
 def get_cycling_mode_from_context(manual_context):
-    bike_available = bool(manual_context.get("bike_available", True))
-    trainer_available = bool(manual_context.get("trainer_available", True))
+    availability = manual_context.get("availability", {})
+
+    bike_available = bool(
+        availability.get(
+            "outdoor_bike_available",
+            manual_context.get("bike_available", True),
+        )
+    )
+    trainer_available = bool(
+        availability.get(
+            "indoor_trainer_available",
+            manual_context.get("trainer_available", True),
+        )
+    )
 
     if bike_available and trainer_available:
         return "bike_or_trainer"
@@ -256,22 +348,110 @@ def find_label_by_value(options, value, fallback_label):
     return fallback_label
 
 
+def get_context_value(context, section, key, legacy_key=None, default=None):
+    section_data = context.get(section, {})
+
+    if key in section_data:
+        return section_data[key]
+
+    if legacy_key and legacy_key in context:
+        return context[legacy_key]
+
+    return default
+
+
 def get_default_manual_context():
     return {
+        "schema_version": "2.0",
         "context_period": "current_week",
-        "family_status": "normal",
-        "sleep_disrupted": False,
-        "workload": "normal",
-        "travel": False,
-        "training_environment": "home",
-        "bike_available": True,
-        "trainer_available": True,
-        "running_available": True,
-        "injury_notes": None,
-        "energy_level": "normal",
-        "available_days": [],
-        "user_note": None,
+        "availability": {
+            "available_days": [],
+            "max_sessions": 3,
+            "max_session_duration_min": 50,
+            "running_available": True,
+            "outdoor_bike_available": True,
+            "indoor_trainer_available": True,
+            "strength_available": True,
+        },
+        "recovery": {
+            "sleep_quality": "okay",
+            "energy_level": "normal",
+            "mental_fatigue": "medium",
+            "muscle_soreness": "low",
+            "illness_status": "none",
+        },
+        "pain": {
+            "active_pain": False,
+            "pain_area": None,
+            "pain_severity": 0,
+            "pain_during_running": False,
+            "pain_note": "",
+        },
+        "life_load": {
+            "work_stress": "normal",
+            "family_load": "normal",
+            "caregiving_load": "low",
+            "travel": False,
+            "routine_disruption": "low",
+            "time_pressure": "normal",
+            "emotional_load": "normal",
+        },
+        "weekly_intent": "maintain_consistency",
+        "user_note": "",
     }
+
+
+def infer_health_status(existing_context):
+    pain = existing_context.get("pain", {})
+    recovery = existing_context.get("recovery", {})
+
+    illness_status = recovery.get("illness_status", "none")
+    if illness_status in ["active", "recovering"]:
+        return illness_status
+
+    if pain.get("active_pain") or existing_context.get("injury_notes"):
+        return "pain"
+
+    return "none"
+
+
+def infer_life_events(existing_context):
+    life_load = existing_context.get("life_load", {})
+    events = []
+
+    work_stress = life_load.get(
+        "work_stress",
+        existing_context.get("workload", "normal"),
+    )
+    family_status = existing_context.get("family_status", "normal")
+
+    if work_stress == "very_high":
+        events.append("Çok yoğun / kapasitem çok sınırlı")
+    elif work_stress == "high":
+        events.append("İş yoğunluğu")
+
+    if life_load.get("family_load") == "high" or family_status in [
+        "family_busy",
+        "child_sick",
+    ]:
+        events.append("Aile / çocuk yoğunluğu")
+
+    if life_load.get("caregiving_load") in ["medium", "high"]:
+        events.append("Bakım sorumluluğu")
+
+    if life_load.get("travel", existing_context.get("travel", False)):
+        events.append("Seyahat")
+
+    if life_load.get("routine_disruption") == "high":
+        events.append("Rutin dışı bir hafta")
+
+    if life_load.get("time_pressure") == "high":
+        events.append("Çok az zaman")
+
+    if life_load.get("emotional_load") == "high":
+        events.append("Duygusal olarak zor bir hafta")
+
+    return list(dict.fromkeys(events))
 
 
 def get_file_status():
@@ -298,133 +478,385 @@ def render_status_pills():
 
 
 def render_sidebar_context_form(existing_context):
-    st.sidebar.header("Güncel durum")
-
-    family_status_label = find_label_by_value(
-        FAMILY_STATUS_OPTIONS,
-        existing_context.get("family_status", "normal"),
-        "Normal",
+    st.sidebar.header("Haftalık Check-in")
+    st.sidebar.caption(
+        "Koçuna bu haftanın gerçek hayat koşullarını anlat. "
+        "Yaklaşık 30 saniye sürer."
     )
 
-    workload_label = find_label_by_value(
-        WORKLOAD_OPTIONS,
-        existing_context.get("workload", "normal"),
-        "Normal",
+    availability = existing_context.get("availability", {})
+    recovery = existing_context.get("recovery", {})
+    pain = existing_context.get("pain", {})
+
+    weekly_intent_value = existing_context.get(
+        "weekly_intent",
+        "maintain_consistency",
+    )
+    weekly_intent_label = find_label_by_value(
+        WEEKLY_INTENT_OPTIONS,
+        weekly_intent_value,
+        "Ritmi korumak",
     )
 
-    training_environment_label = find_label_by_value(
-        TRAINING_ENVIRONMENT_OPTIONS,
-        existing_context.get("training_environment", "home"),
-        "Ev rutini",
+    max_sessions_value = int(availability.get("max_sessions", 3))
+    if max_sessions_value >= 5:
+        max_sessions_value = 5
+    max_sessions_label = find_label_by_value(
+        MAX_SESSIONS_OPTIONS,
+        max_sessions_value,
+        "3 seans",
     )
 
-    energy_level_label = find_label_by_value(
+    max_duration_value = int(
+        availability.get("max_session_duration_min", 50)
+    )
+    duration_candidates = list(MAX_DURATION_OPTIONS.values())
+    nearest_duration = min(
+        duration_candidates,
+        key=lambda option: abs(option - max_duration_value),
+    )
+    max_duration_label = find_label_by_value(
+        MAX_DURATION_OPTIONS,
+        nearest_duration,
+        "45 dk",
+    )
+
+    energy_value = get_context_value(
+        existing_context,
+        "recovery",
+        "energy_level",
+        legacy_key="energy_level",
+        default="normal",
+    )
+    energy_label = find_label_by_value(
         ENERGY_LEVEL_OPTIONS,
-        existing_context.get("energy_level", "normal"),
+        energy_value,
         "Normal",
     )
 
-    existing_available_days = existing_context.get("available_days", [])
+    sleep_quality_value = recovery.get("sleep_quality")
+    if sleep_quality_value is None:
+        sleep_quality_value = (
+            "poor"
+            if existing_context.get("sleep_disrupted", False)
+            else "okay"
+        )
+    sleep_quality_label = find_label_by_value(
+        SLEEP_QUALITY_OPTIONS,
+        sleep_quality_value,
+        "Orta",
+    )
+
+    weekly_intent = st.sidebar.selectbox(
+        "Bu hafta önceliğin ne?",
+        list(WEEKLY_INTENT_OPTIONS.keys()),
+        index=list(WEEKLY_INTENT_OPTIONS.keys()).index(weekly_intent_label),
+    )
+
+    max_sessions = st.sidebar.selectbox(
+        "Bu hafta kaç antrenman gerçekten mümkün?",
+        list(MAX_SESSIONS_OPTIONS.keys()),
+        index=list(MAX_SESSIONS_OPTIONS.keys()).index(max_sessions_label),
+    )
+
+    max_duration = st.sidebar.selectbox(
+        "Bir antrenmana en fazla ne kadar süre ayırabilirsin?",
+        list(MAX_DURATION_OPTIONS.keys()),
+        index=list(MAX_DURATION_OPTIONS.keys()).index(max_duration_label),
+    )
+
+    energy_level = st.sidebar.selectbox(
+        "Enerjin nasıl?",
+        list(ENERGY_LEVEL_OPTIONS.keys()),
+        index=list(ENERGY_LEVEL_OPTIONS.keys()).index(energy_label),
+    )
+
+    sleep_quality = st.sidebar.selectbox(
+        "Uyku ve genel toparlanman nasıl?",
+        list(SLEEP_QUALITY_OPTIONS.keys()),
+        index=list(SLEEP_QUALITY_OPTIONS.keys()).index(sleep_quality_label),
+    )
+
+    st.sidebar.divider()
+    st.sidebar.subheader("Bu haftanın gerçek hayatı")
+
+    existing_life_events = infer_life_events(existing_context)
+    no_special_condition = st.sidebar.checkbox(
+        "Planı etkileyen özel bir durum yok",
+        value=not existing_life_events,
+        key="checkin_no_special_condition",
+    )
+
+    if no_special_condition:
+        life_events = []
+        st.sidebar.caption("Ek yaşam yükü seçilmedi.")
+    else:
+        life_events = st.sidebar.multiselect(
+            "Planını etkileyebilecek durumlar",
+            LIFE_EVENT_OPTIONS,
+            default=existing_life_events,
+            placeholder="Bir veya daha fazla durum seç",
+        )
+
+    st.sidebar.subheader("Antrenman imkânları")
+
+    running_available = st.sidebar.checkbox(
+        "Koşu mümkün",
+        value=bool(
+            get_context_value(
+                existing_context,
+                "availability",
+                "running_available",
+                legacy_key="running_available",
+                default=True,
+            )
+        ),
+    )
+    outdoor_bike_available = st.sidebar.checkbox(
+        "Outdoor bisiklet mümkün",
+        value=bool(
+            get_context_value(
+                existing_context,
+                "availability",
+                "outdoor_bike_available",
+                legacy_key="bike_available",
+                default=True,
+            )
+        ),
+    )
+    indoor_trainer_available = st.sidebar.checkbox(
+        "Indoor trainer mümkün",
+        value=bool(
+            get_context_value(
+                existing_context,
+                "availability",
+                "indoor_trainer_available",
+                legacy_key="trainer_available",
+                default=True,
+            )
+        ),
+    )
+    strength_available = st.sidebar.checkbox(
+        "Mobilite / core mümkün",
+        value=bool(availability.get("strength_available", True)),
+    )
+
+    st.sidebar.subheader("Sağlık sinyali")
+
+    existing_health_status = infer_health_status(existing_context)
+    health_status_label = find_label_by_value(
+        HEALTH_STATUS_OPTIONS,
+        existing_health_status,
+        "Yok",
+    )
+    health_status = st.sidebar.selectbox(
+        "Sağlık açısından planı etkileyen bir durum var mı?",
+        list(HEALTH_STATUS_OPTIONS.keys()),
+        index=list(HEALTH_STATUS_OPTIONS.keys()).index(health_status_label),
+    )
+    health_status_value = HEALTH_STATUS_OPTIONS[health_status]
+
+    pain_severity = 0
+    pain_area = None
+    pain_during_running = False
+    pain_note = ""
+
+    if health_status_value == "pain":
+        existing_pain_severity = int(pain.get("pain_severity", 2) or 2)
+        nearest_pain_severity = min(
+            PAIN_SEVERITY_OPTIONS.values(),
+            key=lambda option: abs(option - existing_pain_severity),
+        )
+        pain_severity_label = find_label_by_value(
+            PAIN_SEVERITY_OPTIONS,
+            nearest_pain_severity,
+            "Hafif",
+        )
+
+        pain_severity_label_selected = st.sidebar.selectbox(
+            "Ağrı ne düzeyde?",
+            list(PAIN_SEVERITY_OPTIONS.keys()),
+            index=list(PAIN_SEVERITY_OPTIONS.keys()).index(
+                pain_severity_label
+            ),
+        )
+        pain_severity = PAIN_SEVERITY_OPTIONS[
+            pain_severity_label_selected
+        ]
+
+        existing_pain_area = pain.get("pain_area")
+        pain_area_label = find_label_by_value(
+            PAIN_AREA_OPTIONS,
+            existing_pain_area,
+            "Diğer",
+        )
+        pain_area_label_selected = st.sidebar.selectbox(
+            "Nerede?",
+            list(PAIN_AREA_OPTIONS.keys()),
+            index=list(PAIN_AREA_OPTIONS.keys()).index(pain_area_label),
+        )
+        pain_area = PAIN_AREA_OPTIONS[pain_area_label_selected]
+
+        pain_during_running = st.sidebar.checkbox(
+            "Koşarken artıyor",
+            value=bool(pain.get("pain_during_running", False)),
+        )
+        pain_note = st.sidebar.text_input(
+            "Kısa ağrı notu",
+            value=(
+                pain.get("pain_note")
+                or existing_context.get("injury_notes")
+                or ""
+            ),
+            placeholder="İsteğe bağlı",
+        )
+
+    existing_available_days = get_context_value(
+        existing_context,
+        "availability",
+        "available_days",
+        legacy_key="available_days",
+        default=[],
+    ) or []
     existing_available_day_labels = [
         option_label
         for option_label, option_value in AVAILABLE_DAY_OPTIONS.items()
         if option_value in existing_available_days
     ]
 
-    family_status = st.sidebar.selectbox(
-        "Aile durumu",
-        list(FAMILY_STATUS_OPTIONS.keys()),
-        index=list(FAMILY_STATUS_OPTIONS.keys()).index(family_status_label),
+    existing_mental_fatigue = recovery.get("mental_fatigue", "medium")
+    mental_fatigue_label = find_label_by_value(
+        MENTAL_FATIGUE_OPTIONS,
+        existing_mental_fatigue,
+        "Orta",
     )
 
-    workload = st.sidebar.selectbox(
-        "İş / günlük yük",
-        list(WORKLOAD_OPTIONS.keys()),
-        index=list(WORKLOAD_OPTIONS.keys()).index(workload_label),
+    existing_muscle_soreness = recovery.get("muscle_soreness", "low")
+    muscle_soreness_label = find_label_by_value(
+        MUSCLE_SORENESS_OPTIONS,
+        existing_muscle_soreness,
+        "Hafif",
     )
 
-    energy_level = st.sidebar.selectbox(
-        "Enerji seviyesi",
-        list(ENERGY_LEVEL_OPTIONS.keys()),
-        index=list(ENERGY_LEVEL_OPTIONS.keys()).index(energy_level_label),
-    )
+    with st.sidebar.expander("İsteğe bağlı detaylar"):
+        available_days = st.multiselect(
+            "Hangi günler uygunsun?",
+            list(AVAILABLE_DAY_OPTIONS.keys()),
+            default=existing_available_day_labels,
+        )
+        mental_fatigue = st.selectbox(
+            "Mental yorgunluk",
+            list(MENTAL_FATIGUE_OPTIONS.keys()),
+            index=list(MENTAL_FATIGUE_OPTIONS.keys()).index(
+                mental_fatigue_label
+            ),
+        )
+        muscle_soreness = st.selectbox(
+            "Kas yorgunluğu",
+            list(MUSCLE_SORENESS_OPTIONS.keys()),
+            index=list(MUSCLE_SORENESS_OPTIONS.keys()).index(
+                muscle_soreness_label
+            ),
+        )
+        user_note = st.text_area(
+            "Ek not",
+            value=existing_context.get("user_note") or "",
+            placeholder="Örn: Perşembe akşamı kesin boşum.",
+            height=90,
+        )
 
-    training_environment = st.sidebar.selectbox(
-        "Antrenman ortamı",
-        list(TRAINING_ENVIRONMENT_OPTIONS.keys()),
-        index=list(TRAINING_ENVIRONMENT_OPTIONS.keys()).index(
-            training_environment_label
+    very_busy = "Çok yoğun / kapasitem çok sınırlı" in life_events
+
+    life_load = {
+        "work_stress": (
+            "very_high"
+            if very_busy
+            else "high"
+            if "İş yoğunluğu" in life_events
+            else "normal"
         ),
-    )
+        "family_load": (
+            "high"
+            if "Aile / çocuk yoğunluğu" in life_events
+            else "normal"
+        ),
+        "caregiving_load": (
+            "high"
+            if "Bakım sorumluluğu" in life_events
+            else "low"
+        ),
+        "travel": "Seyahat" in life_events,
+        "routine_disruption": (
+            "high"
+            if (
+                "Rutin dışı bir hafta" in life_events
+                or very_busy
+            )
+            else "medium"
+            if "Seyahat" in life_events
+            else "low"
+        ),
+        "time_pressure": (
+            "high"
+            if "Çok az zaman" in life_events or very_busy
+            else "normal"
+        ),
+        "emotional_load": (
+            "high"
+            if "Duygusal olarak zor bir hafta" in life_events
+            else "normal"
+        ),
+    }
 
-    st.sidebar.divider()
-
-    sleep_disrupted = st.sidebar.checkbox(
-        "Uyku bölündü / kalitesizdi",
-        value=bool(existing_context.get("sleep_disrupted", False)),
-    )
-
-    travel = st.sidebar.checkbox(
-        "Seyahat / tatil var",
-        value=bool(existing_context.get("travel", False)),
-    )
-
-    running_available = st.sidebar.checkbox(
-        "Koşu mümkün",
-        value=bool(existing_context.get("running_available", True)),
-    )
-
-    bike_available = st.sidebar.checkbox(
-        "Dışarıda bisiklet mümkün",
-        value=bool(existing_context.get("bike_available", True)),
-    )
-
-    trainer_available = st.sidebar.checkbox(
-        "Indoor trainer mümkün",
-        value=bool(existing_context.get("trainer_available", True)),
-    )
-
-    available_days = st.sidebar.multiselect(
-        "Bu hafta uygun günler",
-        list(AVAILABLE_DAY_OPTIONS.keys()),
-        default=existing_available_day_labels,
-    )
-
-    injury_notes = st.sidebar.text_input(
-        "Aktif ağrı / sakatlık notu",
-        value=existing_context.get("injury_notes") or "",
-        placeholder="Yoksa boş bırak",
-    )
-
-    user_note = st.sidebar.text_area(
-        "Ek not",
-        value=existing_context.get("user_note") or "",
-        placeholder="Örn: Tatildeyim, koşabiliyorum ama bisiklet yok.",
-        height=90,
+    illness_status = (
+        health_status_value
+        if health_status_value in ["active", "recovering"]
+        else "none"
     )
 
     manual_context = {
+        "schema_version": "2.0",
         "context_period": "current_week",
-        "family_status": FAMILY_STATUS_OPTIONS[family_status],
-        "sleep_disrupted": sleep_disrupted,
-        "workload": WORKLOAD_OPTIONS[workload],
-        "travel": travel,
-        "training_environment": TRAINING_ENVIRONMENT_OPTIONS[training_environment],
-        "bike_available": bike_available,
-        "trainer_available": trainer_available,
-        "running_available": running_available,
-        "injury_notes": injury_notes.strip() or None,
-        "energy_level": ENERGY_LEVEL_OPTIONS[energy_level],
-        "available_days": [
-            AVAILABLE_DAY_OPTIONS[option_label]
-            for option_label in available_days
-        ],
-        "user_note": user_note.strip() or None,
+        "availability": {
+            "available_days": [
+                AVAILABLE_DAY_OPTIONS[option_label]
+                for option_label in available_days
+            ],
+            "max_sessions": MAX_SESSIONS_OPTIONS[max_sessions],
+            "max_session_duration_min": MAX_DURATION_OPTIONS[max_duration],
+            "running_available": running_available,
+            "outdoor_bike_available": outdoor_bike_available,
+            "indoor_trainer_available": indoor_trainer_available,
+            "strength_available": strength_available,
+        },
+        "recovery": {
+            "sleep_quality": SLEEP_QUALITY_OPTIONS[sleep_quality],
+            "energy_level": ENERGY_LEVEL_OPTIONS[energy_level],
+            "mental_fatigue": MENTAL_FATIGUE_OPTIONS[mental_fatigue],
+            "muscle_soreness": MUSCLE_SORENESS_OPTIONS[muscle_soreness],
+            "illness_status": illness_status,
+        },
+        "pain": {
+            "active_pain": health_status_value == "pain",
+            "pain_area": pain_area,
+            "pain_severity": pain_severity,
+            "pain_during_running": pain_during_running,
+            "pain_note": pain_note.strip(),
+        },
+        "life_load": life_load,
+        "weekly_intent": WEEKLY_INTENT_OPTIONS[weekly_intent],
+        "user_note": user_note.strip(),
     }
 
-    if st.sidebar.button("Context kaydet", use_container_width=True):
+    if st.sidebar.button(
+        "Check-in'i kaydet",
+        use_container_width=True,
+        type="primary",
+    ):
         write_json(MANUAL_CONTEXT_PATH, manual_context)
-        st.sidebar.success("Context kaydedildi.")
+        st.sidebar.success(
+            "Check-in kaydedildi. Yeni karar için pipeline'ı çalıştır."
+        )
 
     return manual_context
 
@@ -792,36 +1224,106 @@ def render_metrics(coach_context):
 
 
 def render_context_summary(coach_context):
-    st.subheader("Yaşam bağlamı")
+    st.subheader("Haftalık yaşam bağlamı")
 
     if not coach_context:
         st.info("Henüz context yok.")
         return
 
     manual_context = coach_context.get("manual_context", {})
+    availability = manual_context.get("availability", {})
+    recovery = manual_context.get("recovery", {})
+    pain = manual_context.get("pain", {})
+    life_load = manual_context.get("life_load", {})
+
+    available_days = availability.get("available_days", [])
+    day_labels = [
+        option_label
+        for option_label, option_value in AVAILABLE_DAY_OPTIONS.items()
+        if option_value in available_days
+    ]
+
+    life_signals = []
+    if life_load.get("work_stress") in ["high", "very_high"]:
+        life_signals.append(
+            f"İş yükü: {label(life_load.get('work_stress'))}"
+        )
+    if life_load.get("family_load") == "high":
+        life_signals.append("Aile yükü yüksek")
+    if life_load.get("caregiving_load") in ["medium", "high"]:
+        life_signals.append("Bakım sorumluluğu var")
+    if life_load.get("travel"):
+        life_signals.append("Seyahat var")
+    if life_load.get("routine_disruption") in ["medium", "high"]:
+        life_signals.append("Rutin bozulmuş")
+    if life_load.get("time_pressure") == "high":
+        life_signals.append("Zaman baskısı yüksek")
+    if life_load.get("emotional_load") == "high":
+        life_signals.append("Duygusal yük yüksek")
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.write(f"**Aile:** {label(manual_context.get('family_status'))}")
-        st.write(f"**İş yükü:** {label(manual_context.get('workload'))}")
-        st.write(f"**Enerji:** {label(manual_context.get('energy_level'))}")
+        st.markdown("**Plan sınırları**")
+        st.write(
+            f"Haftalık niyet: `{label(manual_context.get('weekly_intent'))}`"
+        )
+        st.write(
+            f"Maksimum seans: `{availability.get('max_sessions', '-')}`"
+        )
+        st.write(
+            "Maksimum süre: "
+            f"`{availability.get('max_session_duration_min', '-')} dk`"
+        )
+        st.write(
+            f"Uygun günler: `{', '.join(day_labels) if day_labels else '-'}`"
+        )
 
     with col2:
-        st.write(f"**Ortam:** {label(manual_context.get('training_environment'))}")
-        st.write(f"**Seyahat:** {label(manual_context.get('travel'))}")
-        st.write(f"**Uyku bölündü:** {label(manual_context.get('sleep_disrupted'))}")
+        st.markdown("**Toparlanma**")
+        st.write(f"Enerji: `{label(recovery.get('energy_level'))}`")
+        st.write(f"Uyku: `{label(recovery.get('sleep_quality'))}`")
+        st.write(
+            f"Mental yorgunluk: `{label(recovery.get('mental_fatigue'))}`"
+        )
+        st.write(
+            f"Kas yorgunluğu: `{label(recovery.get('muscle_soreness'))}`"
+        )
 
     with col3:
-        st.write(f"**Koşu mümkün:** {label(manual_context.get('running_available'))}")
-        st.write(f"**Dışarıda bisiklet mümkün:** {label(manual_context.get('bike_available'))}")
-        st.write(f"**Indoor trainer mümkün:** {label(manual_context.get('trainer_available'))}")
+        st.markdown("**İmkânlar ve hayat yükü**")
+        st.write(
+            "Koşu / Outdoor / Trainer / Core: "
+            f"`{label(availability.get('running_available'))}` / "
+            f"`{label(availability.get('outdoor_bike_available'))}` / "
+            f"`{label(availability.get('indoor_trainer_available'))}` / "
+            f"`{label(availability.get('strength_available'))}`"
+        )
+        st.write(
+            "Yaşam sinyalleri: "
+            f"`{', '.join(life_signals) if life_signals else 'Normal'}`"
+        )
 
-    if manual_context.get("injury_notes"):
-        st.warning(f"Aktif ağrı notu: {manual_context.get('injury_notes')}")
+    illness_status = recovery.get("illness_status", "none")
+    if illness_status == "active":
+        st.warning("Kullanıcı şu an hasta olduğunu bildirdi.")
+    elif illness_status == "recovering":
+        st.info("Kullanıcı hastalıktan yeni döndüğünü bildirdi.")
+
+    if pain.get("active_pain"):
+        pain_text = (
+            f"Aktif ağrı: {label(pain.get('pain_area'))}, "
+            f"şiddet {pain.get('pain_severity', '-')}/10"
+        )
+        if pain.get("pain_during_running"):
+            pain_text += ", koşarken artıyor"
+        if pain.get("pain_note"):
+            pain_text += f". {pain.get('pain_note')}"
+        st.warning(pain_text)
 
     if manual_context.get("user_note"):
         st.info(manual_context.get("user_note"))
+
 
 def render_feedback_form(coach_context):
     st.subheader("Bu karar nasıldı?")
