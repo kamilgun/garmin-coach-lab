@@ -1,12 +1,18 @@
 from coach_engine.metrics.load_metrics import compute_load_signals
 from coach_engine.rules.progression import decide_progression
+from coach_engine.context.context_signals import (
+    apply_context_constraints,
+    apply_context_signals_to_rules,
+    derive_context_signals,
+    get_cycling_availability,
+)
 
 from datetime import datetime
 import json
 import os
 
 
-ENGINE_VERSION = "0.5.0"
+ENGINE_VERSION = "0.6.0"
 
 
 def load_json_if_exists(path, default=None):
@@ -41,6 +47,7 @@ def get_default_manual_context():
             "energy_level": "normal",
             "mental_fatigue": "medium",
             "muscle_soreness": "low",
+            "illness_status": "none",
         },
         "pain": {
             "active_pain": False,
@@ -110,6 +117,7 @@ def upgrade_manual_context_v1_to_v2(context):
     upgraded["recovery"]["energy_level"] = energy_level
     upgraded["recovery"]["mental_fatigue"] = "medium"
     upgraded["recovery"]["muscle_soreness"] = "low"
+    upgraded["recovery"]["illness_status"] = "none"
 
     upgraded["pain"]["active_pain"] = active_pain
     upgraded["pain"]["pain_area"] = None
@@ -275,6 +283,11 @@ def normalize_manual_context(context):
         recovery.get("muscle_soreness"),
         ["none", "low", "medium", "high"],
         "low",
+    )
+    recovery["illness_status"] = normalize_enum(
+        recovery.get("illness_status"),
+        ["none", "recovering", "active"],
+        "none",
     )
 
     pain["active_pain"] = normalize_bool(
@@ -465,115 +478,10 @@ def derive_training_rules(load_signals, activity_data, athlete):
     }
 
 
-def has_manual_context_override(manual_context):
-    family_status = manual_context.get("family_status")
-    workload = manual_context.get("workload")
-    energy_level = manual_context.get("energy_level")
-    injury_notes = manual_context.get("injury_notes")
-
-    if family_status not in [None, "normal"]:
-        return True
-
-    if manual_context.get("sleep_disrupted") is True:
-        return True
-
-    if workload in ["high", "very_high"]:
-        return True
-
-    # Travel tek başına override değildir.
-    # Tatil/seyahat bilgisi apply_context_constraints içinde uygulanabilirlik için kullanılır.
-
-    if energy_level in ["low", "very_low"]:
-        return True
-
-    if injury_notes:
-        return True
-
-    return False
-
-def get_cycling_availability(manual_context):
-    bike_available = bool(manual_context.get("bike_available", True))
-    trainer_available = bool(manual_context.get("trainer_available", True))
-
-    if bike_available and trainer_available:
-        return {
-            "available": True,
-            "mode": "bike_or_trainer",
-            "session_text": "kolay Z2 bisiklet/trainer seansı",
-            "unavailable_text": None,
-        }
-
-    if trainer_available:
-        return {
-            "available": True,
-            "mode": "trainer",
-            "session_text": "kolay Z2 trainer seansı",
-            "unavailable_text": None,
-        }
-
-    if bike_available:
-        return {
-            "available": True,
-            "mode": "bike",
-            "session_text": "kolay Z2 bisiklet seansı",
-            "unavailable_text": None,
-        }
-
-    return {
-        "available": False,
-        "mode": "none",
-        "session_text": None,
-        "unavailable_text": "Bu hafta dışarıda bisiklet veya indoor trainer imkanı olmadığı için bisiklet önerisi uygulanabilir değil",
-    }
-
-def apply_context_constraints(decision, manual_context):
+def build_final_decision(rules, manual_context, context_signals=None):
+    context_signals = context_signals or derive_context_signals(manual_context)
     cycling_availability = get_cycling_availability(manual_context)
-
-    cycling_recommendations = {
-        "add_easy_z2",
-        "add_or_maintain_z2",
-        "optional_easy_z2",
-        "optional_recovery",
-        "recovery_only",
-        "recovery",
-    }
-
-    if (
-        decision.get("cycling") in cycling_recommendations
-        and not cycling_availability["available"]
-    ):
-        decision["cycling"] = "not_available"
-
-        if decision.get("priority") in ["bike", "balanced"]:
-            decision["priority"] = "running_consistency"
-
-        decision["reason"] += (
-            f" {cycling_availability['unavailable_text']}; "
-            "öncelik koşu ritmini kolay seviyede korumaya ve mobiliteye kaydırıldı."
-        )
-
-    if manual_context.get("running_available") is False:
-        decision["running"] = "not_available"
-        decision["priority"] = "recovery"
-        decision["weekly_load"] = "reduce_or_maintain"
-        decision["reason"] += (
-            " Bu hafta koşu imkanı olmadığı için koşu önerisi uygulanabilir değil; "
-            "öncelik toparlanma, mobilite ve mümkünse düşük yoğunluklu alternatiflere kaydırıldı."
-        )
-
-    if manual_context.get("training_environment") == "vacation":
-        decision["reason"] += (
-            " Tatil bağlamı nedeniyle planın uygulanabilir ve esnek kalması öncelikli."
-        )
-
-    return decision
-
-def build_final_decision(rules, manual_context):
-    cycling_availability = get_cycling_availability(manual_context)
-    cycling_session_text = (
-        cycling_availability["session_text"]
-        or "kolay Z2 bisiklet/trainer seansı"
-    )
+    cycling_session_text = cycling_availability["session_text"]
 
     if cycling_availability["available"]:
         cycling_recommendation_reason = (
@@ -586,30 +494,13 @@ def build_final_decision(rules, manual_context):
             "korumak daha güvenli."
         )
 
-    context_override = has_manual_context_override(manual_context)
-
     progression_status = rules.get("progression_status")
-    risk_level = rules.get("risk_level")
-    
+    training_load_risk = rules.get(
+        "training_load_risk_level",
+        rules.get("risk_level"),
+    )
 
-    if context_override:
-        decision = {
-            "weekly_load": "reduce_or_maintain",
-            "running": "easy_only",
-            "cycling": "optional_recovery",
-            "cycling_mode": cycling_availability["mode"],
-            "cycling_session_text": cycling_session_text,
-            "strength_or_mobility": "recommended_light",
-            "priority": "recovery",
-            "context_override_applied": True,
-            "reason": (
-                "Normal rule kararı manuel yaşam bağlamı nedeniyle yumuşatıldı. "
-                "Uyku, aile, iş veya sakatlık bağlamı varken haftalık yükü artırmak yerine "
-                "kolay ve sürdürülebilir antrenman tercih edilmeli."
-            ),
-        }
-
-    elif risk_level == "high":
+    if training_load_risk == "high":
         decision = {
             "weekly_load": "reduce",
             "running": "easy_only",
@@ -653,7 +544,7 @@ def build_final_decision(rules, manual_context):
             "context_override_applied": False,
             "reason": (
                 "Yük dengeli görünüyor. Haftalık hacim küçük ve kontrollü şekilde artırılabilir. "
-                f"{cycling_recommendation_reason}"  
+                f"{cycling_recommendation_reason}"
             ),
         }
 
@@ -688,8 +579,11 @@ def build_final_decision(rules, manual_context):
             ),
         }
 
-    return apply_context_constraints(decision, manual_context)
-
+    return apply_context_constraints(
+        decision,
+        manual_context,
+        context_signals=context_signals,
+    )
 
 def build_coach_context():
     activity_data = load_json_if_exists("data/activity_summary.json")
@@ -712,8 +606,14 @@ def build_coach_context():
     performance = build_performance_context(performance_data)
     manual_context = normalize_manual_context(manual_context)
 
+    context_signals = derive_context_signals(manual_context)
     rules = derive_training_rules(load_signals, activity_data, athlete)
-    final_decision = build_final_decision(rules, manual_context)
+    rules = apply_context_signals_to_rules(rules, context_signals)
+    final_decision = build_final_decision(
+        rules,
+        manual_context,
+        context_signals=context_signals,
+    )
 
     return {
         "athlete": athlete,
@@ -721,10 +621,11 @@ def build_coach_context():
         "performance": performance,
         "rules": rules,
         "manual_context": manual_context,
+        "context_signals": context_signals,
         "final_decision": final_decision,
         "metadata": {
             "engine_version": ENGINE_VERSION,
-            "decision_engine": "rule_based_with_manual_context",
+            "decision_engine": "rule_based_with_context_signals_v2",
             "generated_at": datetime.now().isoformat(timespec="seconds"),
         },
     }

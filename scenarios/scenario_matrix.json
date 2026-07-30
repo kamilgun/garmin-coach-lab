@@ -1,56 +1,537 @@
 [
   {
-    "name": "normal_home",
+    "name": "normal_home_v2",
     "manual_context": {
+      "schema_version": "2.0",
       "context_period": "current_week",
-      "family_status": "normal",
-      "sleep_disrupted": false,
-      "workload": "normal",
-      "travel": false,
-      "training_environment": "home",
-      "bike_available": true,
-      "trainer_available": true,
-      "running_available": true,
-      "injury_notes": null,
-      "energy_level": "normal",
-      "available_days": [],
-      "user_note": null
+      "availability": {
+        "available_days": [
+          "tuesday",
+          "thursday",
+          "saturday"
+        ],
+        "max_sessions": 3,
+        "max_session_duration_min": 60,
+        "running_available": true,
+        "outdoor_bike_available": true,
+        "indoor_trainer_available": true,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "good",
+        "energy_level": "normal",
+        "mental_fatigue": "low",
+        "muscle_soreness": "low",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "normal",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": false,
+        "routine_disruption": "low",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "maintain_consistency",
+      "user_note": ""
     },
     "expected": {
       "weekly_load": "maintain",
       "running": "maintain_easy",
       "cycling": "add_easy_z2",
+      "cycling_mode": "bike_or_trainer",
       "priority": "bike",
+      "context_adjustment": "none",
       "context_override_applied": false
     }
   },
   {
-    "name": "vacation_no_bike",
+    "name": "travel_no_bike_v2",
     "manual_context": {
+      "schema_version": "2.0",
       "context_period": "current_week",
-      "family_status": "normal",
-      "sleep_disrupted": false,
-      "workload": "low",
-      "travel": true,
-      "training_environment": "vacation",
-      "bike_available": false,
-      "trainer_available": false,
-      "running_available": true,
-      "injury_notes": null,
-      "energy_level": "normal",
-      "available_days": ["monday", "wednesday", "friday"],
-      "user_note": "I am on vacation. I can run, but I do not have access to my bike or trainer."
+      "availability": {
+        "available_days": [
+          "monday",
+          "wednesday",
+          "friday"
+        ],
+        "max_sessions": 3,
+        "max_session_duration_min": 45,
+        "running_available": true,
+        "outdoor_bike_available": false,
+        "indoor_trainer_available": false,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "okay",
+        "energy_level": "normal",
+        "mental_fatigue": "medium",
+        "muscle_soreness": "low",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "low",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": true,
+        "routine_disruption": "medium",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "maintain_consistency",
+      "user_note": "Seyahatteyim; koşu mümkün ama bisiklet veya trainer yok."
     },
     "expected": {
       "weekly_load": "maintain",
       "running": "maintain_easy",
       "cycling": "not_available",
+      "cycling_mode": "none",
       "priority": "running_consistency",
+      "context_adjustment": "soft",
       "context_override_applied": false
     }
   },
   {
-    "name": "child_sick_week",
+    "name": "poor_sleep_low_energy_v2",
+    "manual_context": {
+      "schema_version": "2.0",
+      "context_period": "current_week",
+      "availability": {
+        "available_days": [
+          "wednesday",
+          "sunday"
+        ],
+        "max_sessions": 2,
+        "max_session_duration_min": 45,
+        "running_available": true,
+        "outdoor_bike_available": true,
+        "indoor_trainer_available": true,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "poor",
+        "energy_level": "low",
+        "mental_fatigue": "high",
+        "muscle_soreness": "low",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "normal",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": false,
+        "routine_disruption": "low",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "maintain_consistency",
+      "user_note": "Uyku kötü, enerji düşük."
+    },
+    "expected": {
+      "weekly_load": "reduce_or_maintain",
+      "running": "easy_only",
+      "cycling": "optional_recovery",
+      "priority": "recovery",
+      "context_adjustment": "strong",
+      "context_override_applied": true
+    }
+  },
+  {
+    "name": "active_illness_v2",
+    "manual_context": {
+      "schema_version": "2.0",
+      "context_period": "current_week",
+      "availability": {
+        "available_days": [
+          "saturday",
+          "sunday"
+        ],
+        "max_sessions": 2,
+        "max_session_duration_min": 45,
+        "running_available": true,
+        "outdoor_bike_available": true,
+        "indoor_trainer_available": true,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "poor",
+        "energy_level": "very_low",
+        "mental_fatigue": "high",
+        "muscle_soreness": "medium",
+        "illness_status": "active"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "normal",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": false,
+        "routine_disruption": "low",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "recover",
+      "user_note": "Şu an hastayım."
+    },
+    "expected": {
+      "weekly_load": "reduce",
+      "running": "not_available",
+      "cycling": "not_available",
+      "strength_or_mobility": "not_recommended",
+      "priority": "recovery",
+      "context_adjustment": "hard",
+      "context_override_applied": true
+    }
+  },
+  {
+    "name": "active_pain_during_running_v2",
+    "manual_context": {
+      "schema_version": "2.0",
+      "context_period": "current_week",
+      "availability": {
+        "available_days": [
+          "tuesday",
+          "thursday",
+          "sunday"
+        ],
+        "max_sessions": 3,
+        "max_session_duration_min": 60,
+        "running_available": true,
+        "outdoor_bike_available": false,
+        "indoor_trainer_available": true,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "okay",
+        "energy_level": "normal",
+        "mental_fatigue": "medium",
+        "muscle_soreness": "low",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": true,
+        "pain_area": "knee",
+        "pain_severity": 5,
+        "pain_during_running": true,
+        "pain_note": "Koşarken diz ağrısı artıyor."
+      },
+      "life_load": {
+        "work_stress": "normal",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": false,
+        "routine_disruption": "low",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "maintain_consistency",
+      "user_note": ""
+    },
+    "expected": {
+      "weekly_load": "reduce_or_maintain",
+      "running": "not_available",
+      "cycling": "optional_recovery",
+      "cycling_mode": "trainer",
+      "priority": "recovery",
+      "context_adjustment": "hard",
+      "context_override_applied": true
+    }
+  },
+  {
+    "name": "trainer_only_no_outdoor_bike_v2",
+    "manual_context": {
+      "schema_version": "2.0",
+      "context_period": "current_week",
+      "availability": {
+        "available_days": [
+          "monday",
+          "wednesday",
+          "friday"
+        ],
+        "max_sessions": 3,
+        "max_session_duration_min": 60,
+        "running_available": true,
+        "outdoor_bike_available": false,
+        "indoor_trainer_available": true,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "good",
+        "energy_level": "normal",
+        "mental_fatigue": "low",
+        "muscle_soreness": "low",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "normal",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": false,
+        "routine_disruption": "low",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "maintain_consistency",
+      "user_note": "Outdoor bisiklet yok, indoor trainer var."
+    },
+    "expected": {
+      "weekly_load": "maintain",
+      "running": "maintain_easy",
+      "cycling": "add_easy_z2",
+      "cycling_mode": "trainer",
+      "priority": "bike",
+      "context_adjustment": "none",
+      "context_override_applied": false
+    }
+  },
+  {
+    "name": "limited_to_one_session_v2",
+    "manual_context": {
+      "schema_version": "2.0",
+      "context_period": "current_week",
+      "availability": {
+        "available_days": [
+          "sunday"
+        ],
+        "max_sessions": 1,
+        "max_session_duration_min": 45,
+        "running_available": true,
+        "outdoor_bike_available": false,
+        "indoor_trainer_available": false,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "okay",
+        "energy_level": "normal",
+        "mental_fatigue": "medium",
+        "muscle_soreness": "low",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "normal",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": true,
+        "routine_disruption": "medium",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "maintain_consistency",
+      "user_note": "Bu hafta yalnızca bir kısa koşu gerçekçi."
+    },
+    "expected": {
+      "weekly_load": "maintain",
+      "running": "maintain_easy",
+      "cycling": "not_available",
+      "strength_or_mobility": "optional",
+      "priority": "running_consistency",
+      "context_adjustment": "soft",
+      "context_override_applied": false
+    }
+  },
+  {
+    "name": "high_life_load_v2",
+    "manual_context": {
+      "schema_version": "2.0",
+      "context_period": "current_week",
+      "availability": {
+        "available_days": [
+          "wednesday",
+          "saturday"
+        ],
+        "max_sessions": 2,
+        "max_session_duration_min": 45,
+        "running_available": true,
+        "outdoor_bike_available": true,
+        "indoor_trainer_available": true,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "okay",
+        "energy_level": "normal",
+        "mental_fatigue": "medium",
+        "muscle_soreness": "low",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "high",
+        "family_load": "high",
+        "caregiving_load": "medium",
+        "travel": false,
+        "routine_disruption": "medium",
+        "time_pressure": "high",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "maintain_consistency",
+      "user_note": "İş ve aile tarafı çok yoğun."
+    },
+    "expected": {
+      "weekly_load": "reduce_or_maintain",
+      "running": "easy_only",
+      "cycling": "optional_recovery",
+      "priority": "recovery",
+      "context_adjustment": "strong",
+      "context_override_applied": true
+    }
+  },
+  {
+    "name": "return_after_break_v2",
+    "manual_context": {
+      "schema_version": "2.0",
+      "context_period": "current_week",
+      "availability": {
+        "available_days": [
+          "tuesday",
+          "saturday"
+        ],
+        "max_sessions": 2,
+        "max_session_duration_min": 45,
+        "running_available": true,
+        "outdoor_bike_available": false,
+        "indoor_trainer_available": true,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "good",
+        "energy_level": "normal",
+        "mental_fatigue": "low",
+        "muscle_soreness": "none",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "normal",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": false,
+        "routine_disruption": "low",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "return_after_break",
+      "user_note": "Bir aradan sonra geri dönüyorum."
+    },
+    "expected": {
+      "weekly_load": "restart_easy",
+      "running": "easy_only",
+      "cycling": "optional_easy_z2",
+      "cycling_mode": "trainer",
+      "priority": "consistency",
+      "context_adjustment": "soft",
+      "context_override_applied": true
+    }
+  },
+  {
+    "name": "no_running_but_trainer_v2",
+    "manual_context": {
+      "schema_version": "2.0",
+      "context_period": "current_week",
+      "availability": {
+        "available_days": [
+          "wednesday",
+          "saturday"
+        ],
+        "max_sessions": 2,
+        "max_session_duration_min": 45,
+        "running_available": false,
+        "outdoor_bike_available": false,
+        "indoor_trainer_available": true,
+        "strength_available": true
+      },
+      "recovery": {
+        "sleep_quality": "okay",
+        "energy_level": "normal",
+        "mental_fatigue": "medium",
+        "muscle_soreness": "low",
+        "illness_status": "none"
+      },
+      "pain": {
+        "active_pain": false,
+        "pain_area": null,
+        "pain_severity": 0,
+        "pain_during_running": false,
+        "pain_note": ""
+      },
+      "life_load": {
+        "work_stress": "normal",
+        "family_load": "normal",
+        "caregiving_load": "low",
+        "travel": false,
+        "routine_disruption": "low",
+        "time_pressure": "normal",
+        "emotional_load": "normal"
+      },
+      "weekly_intent": "maintain_consistency",
+      "user_note": "Koşu bu hafta mümkün değil; trainer mümkün."
+    },
+    "expected": {
+      "weekly_load": "reduce_or_maintain",
+      "running": "not_available",
+      "cycling": "add_easy_z2",
+      "cycling_mode": "trainer",
+      "priority": "recovery",
+      "context_adjustment": "soft",
+      "context_override_applied": true
+    }
+  },
+  {
+    "name": "legacy_child_sick_upgrade",
     "manual_context": {
       "context_period": "current_week",
       "family_status": "child_sick",
@@ -63,88 +544,18 @@
       "running_available": true,
       "injury_notes": null,
       "energy_level": "low",
-      "available_days": ["sunday"],
-      "user_note": "Child was sick and sleep was disrupted."
+      "available_days": [
+        "sunday"
+      ],
+      "user_note": "Çocuk hastaydı ve uyku bölündü."
     },
     "expected": {
       "weekly_load": "reduce_or_maintain",
       "running": "easy_only",
       "cycling": "optional_recovery",
       "priority": "recovery",
+      "context_adjustment": "strong",
       "context_override_applied": true
     }
-  },
-  {
-    "name": "active_injury_note",
-    "manual_context": {
-      "context_period": "current_week",
-      "family_status": "normal",
-      "sleep_disrupted": false,
-      "workload": "normal",
-      "travel": false,
-      "training_environment": "home",
-      "bike_available": true,
-      "trainer_available": true,
-      "running_available": true,
-      "injury_notes": "Mild discomfort during running.",
-      "energy_level": "normal",
-      "available_days": [],
-      "user_note": "There is a mild active pain note."
-    },
-    "expected": {
-      "weekly_load": "reduce_or_maintain",
-      "running": "easy_only",
-      "cycling": "optional_recovery",
-      "priority": "recovery",
-      "context_override_applied": true
-    }
-  },
-  {
-    "name": "no_running_available",
-    "manual_context": {
-      "context_period": "current_week",
-      "family_status": "normal",
-      "sleep_disrupted": false,
-      "workload": "normal",
-      "travel": true,
-      "training_environment": "travel",
-      "bike_available": true,
-      "trainer_available": true,
-      "running_available": false,
-      "injury_notes": null,
-      "energy_level": "normal",
-      "available_days": [],
-      "user_note": "Running is not available this week."
-    },
-    "expected": {
-      "weekly_load": "reduce_or_maintain",
-      "running": "not_available",
-      "priority": "recovery"
-    }
-  },
-  {
-  "name": "trainer_only_no_outdoor_bike",
-  "manual_context": {
-    "context_period": "current_week",
-    "family_status": "normal",
-    "sleep_disrupted": false,
-    "workload": "normal",
-    "travel": false,
-    "training_environment": "home",
-    "bike_available": false,
-    "trainer_available": true,
-    "running_available": true,
-    "injury_notes": null,
-    "energy_level": "normal",
-    "available_days": ["monday", "wednesday", "friday"],
-    "user_note": "Outdoor cycling is not available, but indoor trainer is available."
-  },
-  "expected": {
-    "weekly_load": "maintain",
-    "running": "maintain_easy",
-    "cycling": "add_easy_z2",
-    "priority": "bike",
-    "context_override_applied": false
   }
-}
 ]
