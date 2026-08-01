@@ -1,4 +1,5 @@
 from coach_engine.metrics.load_metrics import compute_load_signals
+from coach_engine.metrics.training_profile import build_training_profile
 from coach_engine.rules.progression import decide_progression
 from coach_engine.context.context_signals import (
     apply_context_constraints,
@@ -604,6 +605,7 @@ def build_coach_context():
     athlete = build_athlete_context(athlete_profile)
     metrics = build_metrics_context(activity_data, load_signals)
     performance = build_performance_context(performance_data)
+    training_profile = build_training_profile(activity_data)
     manual_context = normalize_manual_context(manual_context)
 
     context_signals = derive_context_signals(manual_context)
@@ -619,6 +621,7 @@ def build_coach_context():
         "athlete": athlete,
         "metrics": metrics,
         "performance": performance,
+        "training_profile": training_profile,
         "rules": rules,
         "manual_context": manual_context,
         "context_signals": context_signals,

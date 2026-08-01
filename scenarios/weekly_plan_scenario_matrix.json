@@ -1,0 +1,674 @@
+{
+  "schema_version": "1.0",
+  "description": "Phase 8 deterministic weekly planning chain scenario matrix: coach_context -> candidates -> selection/prescription -> rolling scheduling.",
+  "defaults": {
+    "start_date": "2026-07-31",
+    "coach_context": {
+      "training_profile": {
+        "schema_version": "1.0",
+        "data_available": true,
+        "running_30_days": {
+          "window_days": 30,
+          "runs_analyzed": 6,
+          "pace_guidance_available": true,
+          "total_run_distance_km": 31.56,
+          "total_run_duration_min": 208.2,
+          "median_run_distance_km": 5.0,
+          "median_run_duration_min": 32.5,
+          "longest_run_distance_km": 7.54,
+          "longest_run_duration_min": 51.7,
+          "pace_distribution_sec_per_km": {
+            "faster_quartile_p25": 388,
+            "median": 394,
+            "slower_quartile_p75": 396
+          },
+          "pace_distribution_display": {
+            "faster_quartile_p25": "6:28/km",
+            "median": "6:34/km",
+            "slower_quartile_p75": "6:36/km"
+          },
+          "avg_hr_distribution": {
+            "median": 143.0,
+            "min": 134.0,
+            "max": 151.0
+          }
+        },
+        "recent_runs": [
+          {
+            "date": "2026-07-21",
+            "distance_km": 5.0,
+            "duration_min": 32.2,
+            "avg_pace_sec_per_km": 386,
+            "avg_pace_display": "6:26/km",
+            "avg_hr": 143
+          },
+          {
+            "date": "2026-07-16",
+            "distance_km": 5.0,
+            "duration_min": 33.0,
+            "avg_pace_sec_per_km": 396,
+            "avg_pace_display": "6:36/km",
+            "avg_hr": 142
+          },
+          {
+            "date": "2026-07-15",
+            "distance_km": 7.54,
+            "duration_min": 51.7,
+            "avg_pace_sec_per_km": 411,
+            "avg_pace_display": "6:51/km",
+            "avg_hr": 134
+          },
+          {
+            "date": "2026-07-11",
+            "distance_km": 5.0,
+            "duration_min": 32.2,
+            "avg_pace_sec_per_km": 387,
+            "avg_pace_display": "6:27/km",
+            "avg_hr": 151
+          },
+          {
+            "date": "2026-07-10",
+            "distance_km": 4.01,
+            "duration_min": 26.3,
+            "avg_pace_sec_per_km": 394,
+            "avg_pace_display": "6:34/km",
+            "avg_hr": 143
+          }
+        ],
+        "recent_runs_count": 5
+      },
+      "rules": {
+        "intervals_allowed": false
+      },
+      "context_signals": {
+        "health_constraint": "none",
+        "weekly_intent": "maintain_consistency",
+        "reasons": []
+      },
+      "metadata": {
+        "engine_version": "0.6.0"
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "current_one_session_easy_run_with_add_on",
+      "description": "Tek seans sınırı, koşu mümkün, bisiklet yok; mobilite add-on olmalı.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "easy_only",
+          "cycling": "not_available",
+          "cycling_mode": "none",
+          "cycling_session_text": null,
+          "strength_or_mobility": "optional",
+          "priority": "consistency",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 1,
+            "max_session_duration_min": 45,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "running",
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "candidate.status": "ready",
+        "candidate.candidate_count": 2,
+        "candidate.standalone_capacity_requested": 1,
+        "candidate.selection_required": false,
+        "selection.status": "ready",
+        "selection.session_count": 1,
+        "selection.selection_summary.add_ons_selected": 1,
+        "selection.sessions[0].type": "easy_run",
+        "selection.sessions[0].duration.target_min": 35,
+        "selection.sessions[0].session_total_duration.target_min": 43,
+        "selection.sessions[0].session_total_duration.max": 45,
+        "selection.sessions[0].pace_guidance.target_reference_display": "6:34/km",
+        "selection.sessions[0].pace_guidance.range_display.faster": "6:28/km",
+        "selection.sessions[0].pace_guidance.range_display.slower": "6:49/km",
+        "selection.sessions[0].pace_guidance.binding": false,
+        "selection.sessions[0].distance_guidance.target_km": 5.3,
+        "selection.sessions[0].distance_guidance.binding": false,
+        "plan.plan_status": "ready",
+        "plan.session_count": 1,
+        "plan.sessions[0].scheduling.date": "2026-08-03",
+        "plan.sessions[0].scheduling.day": "monday",
+        "plan.sessions[0].add_ons[0].scheduling.date": "2026-08-03",
+        "plan.schedule_summary.all_sessions_scheduled": true
+      },
+      "expected_list_contains": [
+        {
+          "path": "candidate.blocked_candidates",
+          "match": {
+            "candidate_id": "cycling_easy"
+          }
+        }
+      ]
+    },
+    {
+      "name": "active_illness_hard_stop",
+      "description": "Aktif hastalıkta planning zincirinin tamamı sıfır seans üretmeli.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "not_available",
+          "cycling": "not_available",
+          "cycling_mode": "none",
+          "cycling_session_text": null,
+          "strength_or_mobility": "not_recommended",
+          "priority": "recovery",
+          "weekly_intent": "recover",
+          "health_constraint": "active_illness",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 2,
+            "max_session_duration_min": 45,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "running",
+              "cycling",
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "candidate.status": "no_structured_training",
+        "candidate.candidate_count": 0,
+        "selection.status": "no_structured_training",
+        "selection.session_count": 0,
+        "plan.plan_status": "no_structured_training",
+        "plan.session_count": 0,
+        "plan.scheduled_count": 0,
+        "plan.unscheduled_count": 0
+      }
+    },
+    {
+      "name": "trainer_only_two_sessions",
+      "description": "Koşu kapalı; trainer ve mobilite iki ayrı seans olarak seçilmeli.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "not_available",
+          "cycling": "add_easy_z2",
+          "cycling_mode": "trainer",
+          "cycling_session_text": null,
+          "strength_or_mobility": "recommended",
+          "priority": "bike",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 2,
+            "max_session_duration_min": 50,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "cycling",
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "candidate.candidate_count": 2,
+        "candidate.candidates[0].modality": "indoor_trainer",
+        "selection.session_count": 2,
+        "selection.sessions[0].modality": "indoor_trainer",
+        "selection.sessions[0].duration.target_min": 45,
+        "selection.sessions[1].modality": "strength_or_mobility",
+        "selection.sessions[1].duration.target_min": 20,
+        "plan.plan_status": "ready",
+        "plan.sessions[0].scheduling.date": "2026-08-02",
+        "plan.sessions[1].scheduling.date": "2026-08-04"
+      }
+    },
+    {
+      "name": "recovery_priority_capacity_two",
+      "description": "Recovery önceliği mobilite ve recovery trainer'ı koşunun önüne almalı.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "easy_only",
+          "cycling": "optional_recovery",
+          "cycling_mode": "trainer",
+          "cycling_session_text": null,
+          "strength_or_mobility": "recommended_light",
+          "priority": "recovery",
+          "weekly_intent": "recover",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 2,
+            "max_session_duration_min": 45,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "running",
+              "cycling",
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "candidate.candidate_count": 3,
+        "candidate.selection_required": true,
+        "candidate.candidates[0].candidate_id": "mobility_core",
+        "candidate.candidates[1].candidate_id": "cycling_optional_recovery",
+        "selection.session_count": 2,
+        "selection.sessions[0].source_candidate_id": "mobility_core",
+        "selection.sessions[1].source_candidate_id": "cycling_optional_recovery",
+        "selection.not_selected[0].candidate_id": "running_easy",
+        "selection.not_selected[0].reason_code": "standalone_capacity_limit",
+        "plan.plan_status": "ready"
+      }
+    },
+    {
+      "name": "balanced_capacity_two",
+      "description": "Üç geçerli standalone adaydan en yüksek öncelikli koşu ve bisiklet seçilmeli.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "maintain_easy",
+          "cycling": "add_or_maintain_z2",
+          "cycling_mode": "bike_or_trainer",
+          "cycling_session_text": null,
+          "strength_or_mobility": "recommended",
+          "priority": "balanced",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 2,
+            "max_session_duration_min": 60,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "running",
+              "cycling",
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "candidate.candidate_count": 3,
+        "candidate.selection_required": true,
+        "selection.session_count": 2,
+        "selection.sessions[0].source_candidate_id": "running_easy",
+        "selection.sessions[1].source_candidate_id": "cycling_easy_z2",
+        "selection.not_selected[0].candidate_id": "mobility_core",
+        "plan.sessions[0].scheduling.date": "2026-08-02",
+        "plan.sessions[1].scheduling.date": "2026-08-04"
+      }
+    },
+    {
+      "name": "strength_only",
+      "description": "Koşu ve bisiklet kapalıyken mobilite/core tek standalone seans olmalı.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "not_available",
+          "cycling": "not_available",
+          "cycling_mode": "none",
+          "cycling_session_text": null,
+          "strength_or_mobility": "recommended",
+          "priority": "recovery",
+          "weekly_intent": "recover",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 1,
+            "max_session_duration_min": 30,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "candidate.candidate_count": 1,
+        "candidate.candidates[0].candidate_id": "mobility_core",
+        "candidate.candidates[0].delivery_mode": "standalone",
+        "selection.session_count": 1,
+        "selection.sessions[0].type": "mobility_core",
+        "selection.sessions[0].duration.target_min": 20,
+        "selection.sessions[0].pace_guidance.available": false,
+        "selection.sessions[0].distance_guidance.available": false,
+        "plan.sessions[0].scheduling.date": "2026-08-03"
+      }
+    },
+    {
+      "name": "tight_25_minute_limit",
+      "description": "25 dakika sınırında 20 dakika koşu ve 5 dakika add-on korunmalı.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "easy_only",
+          "cycling": "not_available",
+          "cycling_mode": "none",
+          "cycling_session_text": null,
+          "strength_or_mobility": "optional",
+          "priority": "consistency",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 1,
+            "max_session_duration_min": 25,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "running",
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "selection.session_count": 1,
+        "selection.sessions[0].duration.target_min": 20,
+        "selection.sessions[0].add_ons[0].duration.target_min": 5,
+        "selection.sessions[0].session_total_duration.target_min": 25,
+        "selection.sessions[0].session_total_duration.max": 25,
+        "plan.plan_status": "ready"
+      }
+    },
+    {
+      "name": "very_tight_20_minute_limit_drops_add_on",
+      "description": "20 dakika sınırında ana koşu korunmalı, add-on seçilmemeli.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "easy_only",
+          "cycling": "not_available",
+          "cycling_mode": "none",
+          "cycling_session_text": null,
+          "strength_or_mobility": "optional",
+          "priority": "consistency",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 1,
+            "max_session_duration_min": 20,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "running",
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "selection.session_count": 1,
+        "selection.sessions[0].duration.target_min": 20,
+        "selection.selection_summary.add_ons_selected": 0,
+        "selection.not_selected[0].candidate_id": "mobility_core",
+        "selection.not_selected[0].reason_code": "insufficient_session_duration",
+        "plan.sessions[0].session_total_duration.target_min": 20
+      }
+    },
+    {
+      "name": "missing_training_profile_no_invented_guidance",
+      "description": "Training profile yoksa fallback süre üretilebilir; pace ve mesafe uydurulmamalı.",
+      "remove_paths": [
+        "training_profile"
+      ],
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "easy_only",
+          "cycling": "not_available",
+          "cycling_mode": "none",
+          "cycling_session_text": null,
+          "strength_or_mobility": "not_recommended",
+          "priority": "consistency",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 1,
+            "max_session_duration_min": 45,
+            "available_days": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "available_modalities": [
+              "running"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "candidate.candidates[0].training_reference.data_available": false,
+        "selection.sessions[0].duration.target_min": 30,
+        "selection.sessions[0].pace_guidance.available": false,
+        "selection.sessions[0].distance_guidance.available": false,
+        "plan.plan_status": "ready",
+        "plan.sessions[0].scheduling.date": "2026-08-03"
+      }
+    },
+    {
+      "name": "restricted_days_partial_schedule",
+      "description": "Üç standalone seans yalnızca iki uygun güne sıkıştırılmamalı.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "maintain_easy",
+          "cycling": "add_easy_z2",
+          "cycling_mode": "trainer",
+          "cycling_session_text": null,
+          "strength_or_mobility": "recommended",
+          "priority": "balanced",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 3,
+            "max_session_duration_min": 50,
+            "available_days": [
+              "monday",
+              "wednesday"
+            ],
+            "available_modalities": [
+              "running",
+              "cycling",
+              "strength_or_mobility"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "candidate.candidate_count": 3,
+        "selection.session_count": 3,
+        "plan.plan_status": "partially_scheduled",
+        "plan.scheduled_count": 2,
+        "plan.unscheduled_count": 1,
+        "plan.schedule_summary.unique_dates_used": 2,
+        "plan.sessions[0].scheduling.date": "2026-08-03",
+        "plan.sessions[1].scheduling.date": "2026-08-05",
+        "plan.unscheduled_sessions[0].scheduling.reason_code": "insufficient_unique_available_dates"
+      }
+    },
+    {
+      "name": "turkish_day_aliases",
+      "description": "Türkçe gün isimleri normalize edilerek iki seans yerleştirilmeli.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "maintain_easy",
+          "cycling": "add_easy_z2",
+          "cycling_mode": "trainer",
+          "cycling_session_text": null,
+          "strength_or_mobility": "not_recommended",
+          "priority": "balanced",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 2,
+            "max_session_duration_min": 50,
+            "available_days": [
+              "Pazartesi",
+              "Çarşamba"
+            ],
+            "available_modalities": [
+              "running",
+              "cycling"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "selection.session_count": 2,
+        "plan.plan_status": "ready",
+        "plan.availability_resolution.normalized_days[0]": "monday",
+        "plan.availability_resolution.normalized_days[1]": "wednesday",
+        "plan.sessions[0].scheduling.date": "2026-08-03",
+        "plan.sessions[1].scheduling.date": "2026-08-05"
+      }
+    },
+    {
+      "name": "empty_available_days_means_all_days",
+      "description": "Boş available_days, sıfır uygunluk değil tüm günler anlamına gelmeli.",
+      "coach_context": {
+        "final_decision": {
+          "weekly_load": "restart_easy",
+          "running": "easy_only",
+          "cycling": "not_available",
+          "cycling_mode": "none",
+          "cycling_session_text": null,
+          "strength_or_mobility": "not_recommended",
+          "priority": "consistency",
+          "weekly_intent": "maintain_consistency",
+          "health_constraint": "none",
+          "context_adjustment": "none",
+          "context_override_applied": false,
+          "planning_limits": {
+            "max_sessions": 1,
+            "max_session_duration_min": 45,
+            "available_days": [],
+            "available_modalities": [
+              "running"
+            ]
+          },
+          "context_reasons": [],
+          "reason": "Sentetik weekly plan scenario fixture."
+        }
+      },
+      "expected_equals": {
+        "plan.plan_status": "ready",
+        "plan.availability_resolution.empty_means": "all_days_available",
+        "plan.schedule_summary.available_date_count": 7,
+        "plan.sessions[0].scheduling.date": "2026-08-03"
+      }
+    }
+  ]
+}

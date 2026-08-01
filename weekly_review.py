@@ -1,32 +1,57 @@
-from coach_engine.reporting.weekly_markdown import render_weekly_review
-
 import json
 import os
 
+from coach_engine.reporting.weekly_markdown import render_weekly_review
 
-def load_coach_context():
-    path = "data/coach_context.json"
 
+COACH_CONTEXT_PATH = os.path.join("data", "coach_context.json")
+WEEKLY_PLAN_PATH = os.path.join("data", "weekly_plan.json")
+OUTPUT_PATH = os.path.join("data", "weekly_review.md")
+
+
+def load_json(path, required=False):
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            "data/coach_context.json bulunamadı. "
-            "Önce python build_coach_context.py çalıştır."
-        )
+        if required:
+            raise FileNotFoundError(f"{path} bulunamadı.")
+        return None
 
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    with open(path, "r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+def write_text(path, content):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
+    with open(path, "w", encoding="utf-8") as file:
+        file.write(content)
+        file.write("\n")
 
 
 def main():
-    coach_context = load_coach_context()
-    review = render_weekly_review(coach_context)
+    coach_context = load_json(
+        COACH_CONTEXT_PATH,
+        required=True,
+    )
+    weekly_plan = load_json(
+        WEEKLY_PLAN_PATH,
+        required=False,
+    )
+
+    review = render_weekly_review(
+        coach_context,
+        weekly_plan=weekly_plan,
+    )
+
+    write_text(OUTPUT_PATH, review)
 
     print(review)
+    print(f"\nMarkdown yazıldı: {OUTPUT_PATH}")
 
-    with open("data/weekly_review.md", "w", encoding="utf-8") as f:
-        f.write(review)
-
-    print("\nMarkdown yazıldı: data/weekly_review.md")
+    if weekly_plan is None:
+        print(
+            "[WARN] data/weekly_plan.json bulunamadı; "
+            "review eski fallback davranışıyla üretildi."
+        )
 
 
 if __name__ == "__main__":

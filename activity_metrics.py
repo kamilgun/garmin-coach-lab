@@ -1,53 +1,17 @@
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
+
 from garminconnect import Garmin
 
+from coach_engine.metrics.activity_history import (
+    build_activity_history,
+    build_running_profile,
+    summarize,
+)
+
+
 TOKENSTORE = r"C:\Users\TCKGUN\.garminconnect"
-
-
-def seconds_to_hours(seconds):
-    return round(seconds / 3600, 2)
-
-
-def meters_to_km(meters):
-    return round(meters / 1000, 2)
-
-
-def summarize(activities, days):
-    cutoff = datetime.now() - timedelta(days=days)
-
-    selected = []
-    for a in activities:
-        start = datetime.strptime(a["startTimeLocal"], "%Y-%m-%d %H:%M:%S")
-        if start >= cutoff:
-            selected.append(a)
-
-    total_duration = sum(a.get("duration") or 0 for a in selected)
-    total_distance = sum(a.get("distance") or 0 for a in selected)
-    avg_hrs = [a.get("averageHR") for a in selected if a.get("averageHR")]
-
-    running_count = sum(
-        1 for a in selected
-        if a.get("activityType", {}).get("typeKey") == "running"
-    )
-
-    cycling_count = sum(
-        1 for a in selected
-        if a.get("activityType", {}).get("typeKey") in ["cycling", "indoor_cycling"]
-    )
-
-    avg_hr = round(sum(avg_hrs) / len(avg_hrs), 1) if avg_hrs else None
-
-    return {
-        "days": days,
-        "activity_count": len(selected),
-        "running_count": running_count,
-        "cycling_count": cycling_count,
-        "total_hours": seconds_to_hours(total_duration),
-        "total_km": meters_to_km(total_distance),
-        "avg_hr": avg_hr,
-    }
 
 
 def print_summary(summary):
@@ -65,19 +29,40 @@ def main():
     api = Garmin()
     api.login(TOKENSTORE)
 
+    # Garmin'den gelen aktivite detayları burada zaten mevcut.
     activities = api.get_activities(0, 100)
 
     summary_7 = summarize(activities, 7)
     summary_30 = summarize(activities, 30)
 
+    activity_history = build_activity_history(activities, days=30)
+    running_profile = build_running_profile(
+        activity_history["activities"],
+        window_days=30,
+    )
+
     print_summary(summary_7)
     print_summary(summary_30)
+
+    print("\nRunning profile")
+    print("-" * 30)
+    print(f"Analiz edilen koşu: {running_profile.get('runs_analyzed', 0)}")
+    print(
+        "Median pace       : "
+        f"{running_profile.get('pace_distribution_display', {}).get('median')}"
+    )
 
     os.makedirs("data", exist_ok=True)
 
     output = {
+        "schema_version": "2.0",
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        # Backward-compatible aggregate alanlar:
         "summary_7_days": summary_7,
         "summary_30_days": summary_30,
+        # Weekly Plan Builder için serving layer:
+        "activity_history_30_days": activity_history,
+        "running_profile_30_days": running_profile,
     }
 
     with open("data/activity_summary.json", "w", encoding="utf-8") as f:

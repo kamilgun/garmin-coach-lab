@@ -166,7 +166,135 @@ def format_json_block(data: Dict[str, Any]) -> str:
     return json.dumps(data, ensure_ascii=False, indent=2)
 
 
-def build_llm_coach_prompt(context: Dict[str, Any]) -> str:
+
+def build_weekly_plan_prompt_payload(
+    weekly_plan: Dict[str, Any] | None,
+) -> Dict[str, Any]:
+    """
+    LLM'e yalnızca anlatması gereken deterministic plan alanlarını taşır.
+    Bu fonksiyon karar veya plan üretmez.
+    """
+
+    if not weekly_plan:
+        return {
+            "available": False,
+            "plan_status": "unavailable",
+            "instruction": (
+                "Weekly plan artifact'i yok. Kesin tarih, süre, pace veya "
+                "mesafe uydurma; yalnızca final decision ve planning limits "
+                "çerçevesini anlat."
+            ),
+        }
+
+    sessions = []
+
+    for session in weekly_plan.get("sessions") or []:
+        scheduling = session.get("scheduling") or {}
+        duration = session.get("duration") or {}
+        total_duration = session.get("session_total_duration") or {}
+        intensity = session.get("intensity") or {}
+        pace = session.get("pace_guidance") or {}
+        distance = session.get("distance_guidance") or {}
+
+        add_ons = []
+        for add_on in session.get("add_ons") or []:
+            add_on_duration = add_on.get("duration") or {}
+            add_ons.append(
+                {
+                    "type": add_on.get("type"),
+                    "modality": add_on.get("modality"),
+                    "duration_target_min": add_on_duration.get("target_min"),
+                    "duration_range_min": {
+                        "min": add_on_duration.get("min"),
+                        "max": add_on_duration.get("max"),
+                    },
+                    "same_day_as_main_session": True,
+                }
+            )
+
+        session_payload = {
+            "session_id": session.get("session_id"),
+            "date": scheduling.get("date"),
+            "day": scheduling.get("day"),
+            "day_label_tr": scheduling.get("day_label_tr"),
+            "type": session.get("type"),
+            "modality": session.get("modality"),
+            "duration_target_min": duration.get("target_min"),
+            "duration_range_min": {
+                "min": duration.get("min"),
+                "max": duration.get("max"),
+            },
+            "session_total_duration_target_min": total_duration.get(
+                "target_min"
+            ),
+            "session_total_duration_range_min": {
+                "min": total_duration.get("min"),
+                "max": total_duration.get("max"),
+            },
+            "intensity_cap": intensity.get("cap"),
+            "intensity_primary_guidance": intensity.get(
+                "primary_guidance"
+            ),
+            "pace_guidance": {
+                "available": bool(pace.get("available")),
+                "binding": pace.get("binding"),
+                "target_reference_display": pace.get(
+                    "target_reference_display"
+                ),
+                "range_display": pace.get("range_display"),
+                "primary_guidance": pace.get("primary_guidance"),
+                "note": pace.get("note"),
+            },
+            "distance_guidance": {
+                "available": bool(distance.get("available")),
+                "binding": distance.get("binding"),
+                "target_km": distance.get("target_km"),
+                "range_km": distance.get("range_km"),
+                "note": distance.get("note"),
+            },
+            "add_ons": add_ons,
+            "flexibility": (
+                (scheduling.get("flexibility") or {}).get(
+                    "alternative_dates"
+                )
+            ),
+        }
+        sessions.append(session_payload)
+
+    unscheduled_sessions = []
+
+    for session in weekly_plan.get("unscheduled_sessions") or []:
+        scheduling = session.get("scheduling") or {}
+        unscheduled_sessions.append(
+            {
+                "session_id": session.get("session_id"),
+                "type": session.get("type"),
+                "reason_code": scheduling.get("reason_code"),
+                "reason": scheduling.get("reason"),
+            }
+        )
+
+    return {
+        "available": True,
+        "plan_status": weekly_plan.get("plan_status"),
+        "planning_horizon": weekly_plan.get("planning_horizon"),
+        "week_focus": weekly_plan.get("week_focus"),
+        "priority": weekly_plan.get("priority"),
+        "session_count": weekly_plan.get("session_count"),
+        "scheduled_count": weekly_plan.get("scheduled_count"),
+        "unscheduled_count": weekly_plan.get("unscheduled_count"),
+        "sessions": sessions,
+        "unscheduled_sessions": unscheduled_sessions,
+        "avoid": weekly_plan.get("avoid") or [],
+        "planner_version": weekly_plan.get("planner_version"),
+        "planning_engine": weekly_plan.get("planning_engine"),
+    }
+
+
+def build_llm_coach_prompt(
+    context: Dict[str, Any],
+    weekly_plan: Dict[str, Any] | None = None,
+) -> str:
     athlete = context.get("athlete", {})
     metrics = context.get("metrics", {})
     performance = context.get("performance", {})
@@ -205,18 +333,25 @@ def build_llm_coach_prompt(context: Dict[str, Any]) -> str:
         manual_context.get("running_available"),
     )
     strength_available = availability.get("strength_available")
+    weekly_plan_payload = build_weekly_plan_prompt_payload(weekly_plan)
 
     prompt = f"""
 Sen destekleyici, gerçekçi ve temkinli bir dayanıklılık sporu koçusun.
 
-Aşağıdaki veriler deterministik bir karar motoru tarafından hazırlanmış Coach Context çıktısıdır.
-Senin görevin karar vermek veya yeni plan oluşturmak değil; verilmiş kararı kullanıcıya doğal, kısa ve uygulanabilir bir dille anlatmaktır.
+Aşağıdaki veriler deterministik karar ve planlama motorları tarafından hazırlanmış Coach Context ve Weekly Plan çıktılarıdır.
+Senin görevin karar vermek veya yeni plan oluşturmak değil; verilmiş kararı ve varsa kesin haftalık planı kullanıcıya doğal, kısa ve uygulanabilir bir dille anlatmaktır.
 
 KRİTİK TALİMATLAR:
 - final_decision içindeki kararları değiştirme.
 - planning_limits içindeki max_sessions ve max_session_duration_min değerleri kesin üst sınırlardır.
 - planning_limits.available_modalities dışında bir antrenman türü önerme.
-- available_days boş değilse antrenmanı yalnızca bu günlerle uyumlu anlat; kendin yeni gün seçme.
+- weekly_plan.available true ise WEEKLY PLAN — DEĞİŞTİRME bölümündeki tarih, gün, seans türü, seans sayısı, süre, yoğunluk üst sınırı ve add-on kararlarını değiştirme.
+- weekly_plan.available true ise kendin yeni gün, alternatif seans veya ekstra çalışma seçme; yalnızca planner tarafından verilen planı anlat.
+- weekly_plan.available false ise kesin tarih, süre, pace veya mesafe uydurma; yalnızca final_decision ve planning_limits çerçevesinde konuş.
+- Pace ve mesafe alanlarında binding false ise bunları kesin hedef değil, bağlayıcı olmayan yakın dönem referansı olarak anlat; kolay/konuşma temposundaki eforu öncele.
+- plan_status "no_structured_training" ise hiçbir yapılandırılmış antrenman önermeme.
+- plan_status "partially_scheduled" veya "unscheduled" ise planlanamayan seansları yapılması gereken ek görevler gibi sunma.
+- available_days boş değilse weekly plan yokken antrenmanı yalnızca bu günlerle uyumlu anlat; kendin yeni gün seçme.
 - Yeni yoğun antrenman, interval, tempo koşusu, uzun koşu veya ekstra seans ekleme.
 - context_adjustment "soft" ise yaşam bağlamının temel kararı tamamen değiştirmediğini, fakat süre/seans/uygulanabilirlik sınırları getirdiğini doğal biçimde açıkla.
 - context_adjustment "strong" veya "hard" ise planın sağlık, toparlanma ya da yaşam yükü nedeniyle belirgin biçimde yumuşatıldığını açıkla.
@@ -242,7 +377,9 @@ KRİTİK TALİMATLAR:
 - final_decision.strength_or_mobility "not_recommended" ise mobilite/core önermeme.
 - Türkçe yaz.
 - Kısa, insani ve uygulanabilir bir haftalık koç mesajı üret.
-- Kararı açıklarken metrics, rules, manual_context, context_signals ve final_decision bilgilerine dayan.
+- Kararı açıklarken metrics, rules, manual_context, context_signals, final_decision ve weekly_plan bilgilerine dayan.
+- weekly_plan.available true ise 'Ne yapılmalı?' bölümünde planlanan günü, ana seans süresini, toplam süreyi ve varsa add-on'u açıkça belirt.
+- weekly_plan içindeki pace/distance binding false alanlarını zorunlu performans hedefi gibi sunma.
 - Kaynak veride bulunmayan hedef, süre, tempo, nabız bölgesi veya antrenman detayı uydurma.
 
 ÇIKTI FORMATI ZORUNLU:
@@ -356,6 +493,10 @@ FINAL DECISION — DEĞİŞTİRME:
 - Life constraint: {label(final_decision.get("life_constraint"))}
 - Context override applied: {label_bool(final_decision.get("context_override_applied"))}
 - Karar gerekçesi: {label(final_decision.get("reason"))}
+
+
+WEEKLY PLAN — DEĞİŞTİRME:
+{format_json_block(weekly_plan_payload)}
 
 PERFORMANCE SIGNALS:
 - Garmin Race Predictor tarihi: {label(race_predictor.get("calendar_date"))}

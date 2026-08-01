@@ -1,8 +1,11 @@
 import argparse
+from datetime import date, datetime
 import os
 import subprocess
 import sys
-from datetime import datetime
+
+
+PIPELINE_VERSION = "0.8.0"
 
 
 def configure_stdout():
@@ -23,17 +26,20 @@ def run_step(name, command, allow_fail=False):
             check=True,
             env=env,
         )
-    except subprocess.CalledProcessError as e:
+    except subprocess.CalledProcessError as error:
         if allow_fail:
-            print(f"[WARN] {name} başarısız oldu ama pipeline devam ediyor.")
-            print(f"[WARN] Exit code: {e.returncode}")
+            print(
+                f"[WARN] {name} başarısız oldu ama pipeline devam ediyor."
+            )
+            print(f"[WARN] Exit code: {error.returncode}")
             return False
 
         print(f"[ERROR] {name} başarısız oldu.")
-        print(f"[ERROR] Exit code: {e.returncode}")
+        print(f"[ERROR] Exit code: {error.returncode}")
         raise
 
     return True
+
 
 def load_env_file_if_available():
     if not os.path.exists(".env"):
@@ -43,7 +49,9 @@ def load_env_file_if_available():
     try:
         from dotenv import load_dotenv
     except ImportError:
-        print(".env file: FOUND, but python-dotenv is not installed")
+        print(
+            ".env file: FOUND, but python-dotenv is not installed"
+        )
         return
 
     load_dotenv()
@@ -58,14 +66,65 @@ def can_import(module_name):
         return False
 
 
+def parse_iso_date(value):
+    try:
+        date.fromisoformat(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(
+            "Tarih YYYY-MM-DD formatında olmalı."
+        ) from error
+
+    return value
+
+
+def check_required_paths(paths, errors):
+    for path in paths:
+        if not os.path.exists(path):
+            errors.append(f"Gerekli dosya bulunamadı: {path}")
+
+
 def preflight_check(args, python_executable):
     print("\n=== Preflight Check ===")
+    print(f"Pipeline version: {PIPELINE_VERSION}")
     print(f"Python executable: {python_executable}")
     print(f"Working directory: {os.getcwd()}")
 
     load_env_file_if_available()
 
     errors = []
+
+    required_scripts = [
+        "build_coach_context.py",
+        "build_weekly_plan.py",
+        "weekly_review.py",
+        "generate_llm_prompt.py",
+    ]
+
+    if not args.skip_garmin:
+        required_scripts.extend(
+            [
+                "activity_metrics.py",
+                "performance_metrics.py",
+            ]
+        )
+    else:
+        check_required_paths(
+            ["data/activity_summary.json"],
+            errors,
+        )
+
+    if not args.skip_llm:
+        required_scripts.append("generate_coach_message.py")
+
+    check_required_paths(required_scripts, errors)
+
+    if can_import("coach_engine.planning.weekly_plan"):
+        print("weekly plan builder: OK")
+    else:
+        errors.append(
+            "coach_engine.planning.weekly_plan import edilemedi. "
+            "Planning dosyalarının doğru konumda olduğunu kontrol et."
+        )
 
     if not args.skip_garmin:
         if can_import("garminconnect"):
@@ -90,11 +149,14 @@ def preflight_check(args, python_executable):
         else:
             errors.append(
                 "OPENAI_API_KEY bulunamadı. "
-                ".env dosyası oluştur veya terminalde OPENAI_API_KEY tanımla."
+                ".env dosyası oluştur veya terminalde "
+                "OPENAI_API_KEY tanımla."
             )
 
     if errors:
-        error_message = "\n".join(f"- {error}" for error in errors)
+        error_message = "\n".join(
+            f"- {error}" for error in errors
+        )
         raise RuntimeError(
             "Preflight check başarısız oldu:\n"
             f"{error_message}"
@@ -103,14 +165,28 @@ def preflight_check(args, python_executable):
     print("Preflight check: OK")
 
 
-def print_artifacts(skip_llm):
+def print_artifacts(skip_garmin, skip_llm):
     print("\n=== Pipeline tamamlandı ===")
+    print(f"Pipeline version: {PIPELINE_VERSION}")
     print(f"Zaman: {datetime.now().isoformat(timespec='seconds')}")
 
-    print("\nÜretilen / güncellenen dosyalar:")
+    if skip_garmin:
+        print("\nKullanılan mevcut Garmin artifact'leri:")
+    else:
+        print("\nGüncellenen Garmin artifact'leri:")
+
     print("- data/activity_summary.json")
     print("- data/performance_summary.json")
+
+    print("\nDecision artifact:")
     print("- data/coach_context.json")
+
+    print("\nPlanning artifact'leri:")
+    print("- data/session_candidates.json")
+    print("- data/session_selection.json")
+    print("- data/weekly_plan.json")
+
+    print("\nReporting / narration artifact'leri:")
     print("- data/weekly_review.md")
     print("- data/llm_coach_prompt.md")
 
@@ -137,17 +213,29 @@ def main():
     parser.add_argument(
         "--skip-llm",
         action="store_true",
-        help="OpenAI API çağrısını atlar; sadece llm_coach_prompt.md üretir.",
+        help=(
+            "OpenAI API çağrısını atlar; "
+            "yalnızca llm_coach_prompt.md üretir."
+        ),
+    )
+
+    parser.add_argument(
+        "--plan-start-date",
+        type=parse_iso_date,
+        help=(
+            "Weekly plan için YYYY-MM-DD başlangıç tarihi. "
+            "Verilmezse local sistem tarihi kullanılır."
+        ),
     )
 
     args = parser.parse_args()
-
     python_executable = sys.executable
 
     preflight_check(args, python_executable)
 
     print("\nGarmin Coach Lab Pipeline")
     print("=========================")
+    print(f"Version: {PIPELINE_VERSION}")
 
     if args.skip_garmin:
         print("Garmin refresh: SKIPPED")
@@ -158,6 +246,13 @@ def main():
         print("LLM API: SKIPPED")
     else:
         print("LLM API: ENABLED")
+
+    if args.plan_start_date:
+        print(
+            f"Weekly plan start date: {args.plan_start_date}"
+        )
+    else:
+        print("Weekly plan start date: LOCAL TODAY")
 
     if not args.skip_garmin:
         run_step(
@@ -175,6 +270,21 @@ def main():
         [python_executable, "build_coach_context.py"],
     )
 
+    planning_command = [
+        python_executable,
+        "build_weekly_plan.py",
+    ]
+
+    if args.plan_start_date:
+        planning_command.extend(
+            ["--start-date", args.plan_start_date]
+        )
+
+    run_step(
+        "Build Deterministic Weekly Plan",
+        planning_command,
+    )
+
     run_step(
         "Weekly Review Markdown",
         [python_executable, "weekly_review.py"],
@@ -186,18 +296,15 @@ def main():
     )
 
     if not args.skip_llm:
-        if not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError(
-                "OPENAI_API_KEY bulunamadı. "
-                "Ya environment variable olarak tanımla ya da --skip-llm kullan."
-            )
-
         run_step(
             "Generate Coach Message",
             [python_executable, "generate_coach_message.py"],
         )
 
-    print_artifacts(skip_llm=args.skip_llm)
+    print_artifacts(
+        skip_garmin=args.skip_garmin,
+        skip_llm=args.skip_llm,
+    )
 
 
 if __name__ == "__main__":

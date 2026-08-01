@@ -163,12 +163,16 @@ def cycling_mode_label(value):
     return cycling_mode_labels.get(value, label(value))
 
 
-def render_weekly_review(context: Dict[str, Any]) -> str:
+def render_weekly_review(
+    context: Dict[str, Any],
+    weekly_plan: Dict[str, Any] | None = None,
+) -> str:
     """
-    Coach Context -> Markdown
+    Coach Context + optional Weekly Plan -> Markdown
 
-    Bu renderer hesap yapmaz, karar vermez.
-    Sadece hazır coach_context verisini okunabilir Markdown'a çevirir.
+    Bu renderer hesap yapmaz, karar vermez veya plan değiştirmez.
+    Hazır coach_context ve weekly_plan artifact'lerini okunabilir
+    teknik Markdown'a çevirir.
     """
 
     lines = []
@@ -180,6 +184,7 @@ def render_weekly_review(context: Dict[str, Any]) -> str:
     append_load(lines, context)
     append_manual_context(lines, context)
     append_decision(lines, context)
+    append_weekly_plan(lines, weekly_plan)
     append_performance(lines, context)
     append_next_week(lines, context)
     append_metadata(lines, context)
@@ -521,6 +526,205 @@ def append_decision(lines, context):
         lines.append("")
         lines.append(reason)
 
+
+
+SESSION_TYPE_LABELS = {
+    "easy_run": "Kolay koşu",
+    "easy_z2_cycling": "Kolay Z2 bisiklet/trainer",
+    "recovery_cycling": "Toparlanma sürüşü",
+    "mobility_core": "Mobilite/Core",
+    "light_mobility_core": "Hafif mobilite/Core",
+}
+
+INTENSITY_LABELS = {
+    "easy": "Kolay / konuşma temposu",
+    "easy_z2": "Kolay Z2",
+    "recovery": "Çok kolay toparlanma eforu",
+    "light": "Hafif ve kontrollü",
+}
+
+
+def session_type_label(value):
+    return SESSION_TYPE_LABELS.get(value, value_or_dash(value))
+
+
+def intensity_label(value):
+    return INTENSITY_LABELS.get(value, value_or_dash(value))
+
+
+def _format_duration_range(duration):
+    if not duration:
+        return "-"
+
+    target = duration.get("target_min")
+    minimum = duration.get("min")
+    maximum = duration.get("max")
+
+    parts = []
+
+    if target is not None:
+        parts.append(f"hedef {target} dk")
+
+    if minimum is not None and maximum is not None:
+        parts.append(f"aralık {minimum}–{maximum} dk")
+
+    return ", ".join(parts) if parts else "-"
+
+
+def _format_alternatives(scheduling):
+    flexibility = (scheduling or {}).get("flexibility") or {}
+    alternatives = flexibility.get("alternative_dates") or []
+
+    if not alternatives:
+        return None
+
+    return ", ".join(
+        (
+            f"{item.get('day_label_tr') or item.get('day')} "
+            f"({item.get('date')})"
+        )
+        for item in alternatives
+    )
+
+
+def append_weekly_plan(lines, weekly_plan):
+    lines.append("\n## Deterministik Haftalık Plan")
+
+    if not weekly_plan:
+        lines.append(
+            "Weekly plan artifact'i bulunamadı. Karar ve uygulanabilirlik "
+            "çerçevesi yukarıda korunur; ancak bu raporda kesin gün, süre, "
+            "pace veya mesafe ayrıntısı gösterilemez."
+        )
+        return
+
+    status = weekly_plan.get("plan_status")
+    horizon = weekly_plan.get("planning_horizon") or {}
+
+    lines.append(
+        f"- Plan durumu: {value_or_dash(status)}"
+    )
+
+    if horizon:
+        lines.append(
+            f"- Rolling plan penceresi: "
+            f"{value_or_dash(horizon.get('start_date'))} → "
+            f"{value_or_dash(horizon.get('end_date'))}"
+        )
+
+    lines.append(
+        f"- Planlanan standalone seans: "
+        f"{value_or_dash(weekly_plan.get('scheduled_count', weekly_plan.get('session_count')))}"
+    )
+    lines.append(
+        f"- Planlanamayan seans: "
+        f"{value_or_dash(weekly_plan.get('unscheduled_count', 0))}"
+    )
+
+    if status == "no_structured_training":
+        lines.append(
+            "Aktif sağlık/toparlanma kısıtı nedeniyle yapılandırılmış "
+            "antrenman planlanmadı."
+        )
+        return
+
+    sessions = weekly_plan.get("sessions") or []
+
+    if not sessions:
+        lines.append("Bu rolling 7 günlük pencere için planlanmış seans yok.")
+    else:
+        for index, session in enumerate(sessions, start=1):
+            scheduling = session.get("scheduling") or {}
+            date_value = scheduling.get("date")
+            day_label = scheduling.get("day_label_tr") or scheduling.get("day")
+            session_type = session_type_label(session.get("type"))
+
+            lines.append("")
+            lines.append(
+                f"### {index}. {day_label or '-'} ({date_value or '-'}) — "
+                f"{session_type}"
+            )
+
+            duration = session.get("duration") or {}
+            total_duration = session.get("session_total_duration") or {}
+            intensity = session.get("intensity") or {}
+
+            lines.append(
+                f"- Ana çalışma süresi: {_format_duration_range(duration)}"
+            )
+            lines.append(
+                f"- Toplam seans süresi: "
+                f"{_format_duration_range(total_duration)}"
+            )
+            lines.append(
+                f"- Yoğunluk üst sınırı: "
+                f"{intensity_label(intensity.get('cap'))}"
+            )
+
+            pace = session.get("pace_guidance") or {}
+            if pace.get("available"):
+                pace_range = pace.get("range_display") or {}
+                lines.append(
+                    f"- Pace referansı: "
+                    f"{value_or_dash(pace.get('target_reference_display'))}; "
+                    f"yaklaşık "
+                    f"{value_or_dash(pace_range.get('faster'))}–"
+                    f"{value_or_dash(pace_range.get('slower'))}; "
+                    f"bağlayıcı değil"
+                )
+                lines.append(
+                    "- Ana efor rehberi: konuşma temposunda kolay koşu; "
+                    "pace ikinci plandadır."
+                )
+
+            distance = session.get("distance_guidance") or {}
+            if distance.get("available"):
+                distance_range = distance.get("range_km") or {}
+                lines.append(
+                    f"- Yaklaşık mesafe: "
+                    f"{value_or_dash(distance.get('target_km'))} km; "
+                    f"aralık "
+                    f"{value_or_dash(distance_range.get('min'))}–"
+                    f"{value_or_dash(distance_range.get('max'))} km; "
+                    f"bağlayıcı değil"
+                )
+
+            add_ons = session.get("add_ons") or []
+            for add_on in add_ons:
+                add_on_duration = add_on.get("duration") or {}
+                lines.append(
+                    f"- Add-on: "
+                    f"{session_type_label(add_on.get('type'))}, "
+                    f"{_format_duration_range(add_on_duration)}, "
+                    f"ana seansla aynı gün"
+                )
+
+            alternatives = _format_alternatives(scheduling)
+            if alternatives:
+                lines.append(
+                    f"- Esnek alternatif günler: {alternatives}"
+                )
+
+    unscheduled = weekly_plan.get("unscheduled_sessions") or []
+    if unscheduled:
+        lines.append("")
+        lines.append("### Planlanamayan geçerli seanslar")
+        for session in unscheduled:
+            scheduling = session.get("scheduling") or {}
+            lines.append(
+                f"- {session_type_label(session.get('type'))}: "
+                f"{value_or_dash(scheduling.get('reason'))}"
+            )
+
+    lines.append("")
+    lines.append(
+        f"- Planner version: "
+        f"{value_or_dash(weekly_plan.get('planner_version'))}"
+    )
+    lines.append(
+        f"- Planning engine: "
+        f"{value_or_dash(weekly_plan.get('planning_engine'))}"
+    )
 
 def append_performance(lines, context):
     performance = context.get("performance", {})
