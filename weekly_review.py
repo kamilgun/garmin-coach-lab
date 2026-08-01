@@ -1,5 +1,6 @@
 import json
 import os
+import tempfile
 
 from coach_engine.reporting.weekly_markdown import render_weekly_review
 
@@ -19,12 +20,30 @@ def load_json(path, required=False):
         return json.load(file)
 
 
-def write_text(path, content):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+def write_text_atomic(path, content):
+    directory = os.path.dirname(path) or "."
+    os.makedirs(directory, exist_ok=True)
 
-    with open(path, "w", encoding="utf-8") as file:
-        file.write(content)
-        file.write("\n")
+    temporary_path = None
+
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=directory,
+            prefix=".tmp_weekly_review_",
+            suffix=".md",
+            delete=False,
+        ) as temporary_file:
+            temporary_file.write(content)
+            temporary_file.write("\n")
+            temporary_path = temporary_file.name
+
+        os.replace(temporary_path, path)
+    except Exception:
+        if temporary_path and os.path.exists(temporary_path):
+            os.remove(temporary_path)
+        raise
 
 
 def main():
@@ -42,7 +61,7 @@ def main():
         weekly_plan=weekly_plan,
     )
 
-    write_text(OUTPUT_PATH, review)
+    write_text_atomic(OUTPUT_PATH, review)
 
     print(review)
     print(f"\nMarkdown yazıldı: {OUTPUT_PATH}")
@@ -50,7 +69,7 @@ def main():
     if weekly_plan is None:
         print(
             "[WARN] data/weekly_plan.json bulunamadı; "
-            "review eski fallback davranışıyla üretildi."
+            "review fallback davranışıyla üretildi."
         )
 
 

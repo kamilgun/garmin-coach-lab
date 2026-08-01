@@ -696,7 +696,55 @@ This helps diagnose environment and virtual-environment issues before the pipeli
 
 ## Testing
 
-The project currently uses explicit local runners and scenario matrices.
+## Consolidated test suite
+
+Run the complete deterministic test suite with:
+
+```cmd
+python run_all_tests.py
+```
+
+The runner executes:
+
+```text
+Context Scenario Matrix
+→ Session Candidate Tests
+→ Session Selection Tests
+→ Weekly Scheduling Tests
+→ Weekly Plan Builder Tests
+→ Weekly Plan Scenario Matrix
+→ Weekly Review Reporting Tests
+→ Weekly Plan Propagation Tests
+→ Artifact Contract Tests
+→ Deterministic Pipeline Smoke Test
+```
+
+By default, the runner snapshots and restores:
+
+```text
+data/
+athlete_profile.json
+```
+
+This prevents tests and the pipeline smoke test from permanently replacing the current local plan or weekly context.
+
+A Markdown summary is written to:
+
+```text
+data/test_suite_summary.md
+```
+
+Useful options:
+
+```cmd
+python run_all_tests.py --verbose
+python run_all_tests.py --fail-fast
+python run_all_tests.py --skip-pipeline
+python run_all_tests.py --list
+```
+
+`--keep-artifacts` disables workspace restoration and should only be used when test-generated artifacts need to be inspected.
+
 
 ### Context-aware decision scenarios
 

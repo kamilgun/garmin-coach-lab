@@ -4,6 +4,10 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, Optional
 
+from ..contracts import (
+    validate_session_selection_v1,
+    validate_weekly_plan_v1,
+)
 from .scheduling import schedule_weekly_plan
 from .session_candidates import build_session_candidates
 from .session_selection import select_sessions
@@ -69,6 +73,7 @@ def build_weekly_plan_bundle(
         stage="session_selection_and_prescription",
         coach_context=coach_context,
     )
+    validate_session_selection_v1(selection_artifact)
 
     weekly_plan = schedule_weekly_plan(
         selection_artifact,
@@ -79,6 +84,7 @@ def build_weekly_plan_bundle(
         stage="rolling_7_day_scheduling",
         coach_context=coach_context,
     )
+    validate_weekly_plan_v1(weekly_plan)
 
     generated_at = datetime.now().isoformat(timespec="seconds")
 
