@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime
-
+from pathlib import Path
 from garminconnect import Garmin
 
 from coach_engine.metrics.activity_history import (
@@ -11,7 +11,9 @@ from coach_engine.metrics.activity_history import (
 )
 
 
-TOKENSTORE = r"C:\Users\TCKGUN\.garminconnect"
+from pathlib import Path
+
+TOKENSTORE = Path.home() / ".garminconnect"
 
 
 def print_summary(summary):
@@ -27,7 +29,7 @@ def print_summary(summary):
 
 def main():
     api = Garmin()
-    api.login(TOKENSTORE)
+    api.login(str(TOKENSTORE))
 
     # Garmin'den gelen aktivite detayları burada zaten mevcut.
     activities = api.get_activities(0, 100)

@@ -2,8 +2,9 @@ import json
 import os
 from datetime import timedelta
 from garminconnect import Garmin
+from pathlib import Path
 
-TOKENSTORE = r"C:\Users\TCKGUN\.garminconnect"
+TOKENSTORE = Path.home() / ".garminconnect"
 
 
 def seconds_to_hms(seconds):
@@ -14,7 +15,7 @@ def seconds_to_hms(seconds):
 
 def main():
     api = Garmin()
-    api.login(TOKENSTORE)
+    api.login(str(TOKENSTORE))
 
     race = api.get_race_predictions()
 
