@@ -1,3 +1,4 @@
+import html
 import json
 import shutil
 import subprocess
@@ -7,6 +8,10 @@ from datetime import datetime
 
 import streamlit as st
 
+from coach_engine.presentation import (
+    build_weekly_plan_view_model,
+)
+
 
 DATA_DIR = Path("data")
 SAMPLES_DIR = DATA_DIR / "samples"
@@ -15,6 +20,9 @@ MANUAL_CONTEXT_PATH = DATA_DIR / "manual_context.json"
 ACTIVITY_SUMMARY_PATH = DATA_DIR / "activity_summary.json"
 PERFORMANCE_SUMMARY_PATH = DATA_DIR / "performance_summary.json"
 COACH_CONTEXT_PATH = DATA_DIR / "coach_context.json"
+WEEKLY_PLAN_PATH = DATA_DIR / "weekly_plan.json"
+SESSION_CANDIDATES_PATH = DATA_DIR / "session_candidates.json"
+SESSION_SELECTION_PATH = DATA_DIR / "session_selection.json"
 WEEKLY_REVIEW_PATH = DATA_DIR / "weekly_review.md"
 COACH_MESSAGE_PATH = DATA_DIR / "coach_message.md"
 FEEDBACK_LOG_PATH = DATA_DIR / "feedback_log.jsonl"
@@ -460,6 +468,7 @@ def get_file_status():
         "Performance": PERFORMANCE_SUMMARY_PATH.exists(),
         "Context": MANUAL_CONTEXT_PATH.exists(),
         "Coach Context": COACH_CONTEXT_PATH.exists(),
+        "Weekly Plan": WEEKLY_PLAN_PATH.exists(),
         "Weekly Review": WEEKLY_REVIEW_PATH.exists(),
     }
 
@@ -553,16 +562,29 @@ def render_sidebar_context_form(existing_context):
         index=list(WEEKLY_INTENT_OPTIONS.keys()).index(weekly_intent_label),
     )
 
+    if WEEKLY_INTENT_OPTIONS[weekly_intent] == "race_specific":
+        st.sidebar.caption(
+            "Yarış niyeti mevcut güvenli adaylar arasında öncelik "
+            "sinyalidir. Bu sürüm henüz interval, tempo veya uzun koşu "
+            "üretmez."
+        )
+
     max_sessions = st.sidebar.selectbox(
-        "Bu hafta kaç antrenman gerçekten mümkün?",
+        "Bu hafta en fazla kaç antrenman mümkün?",
         list(MAX_SESSIONS_OPTIONS.keys()),
         index=list(MAX_SESSIONS_OPTIONS.keys()).index(max_sessions_label),
+    )
+    st.sidebar.caption(
+        "Bu sayı plan hedefi değil, planner'ın aşamayacağı kapasite sınırıdır."
     )
 
     max_duration = st.sidebar.selectbox(
         "Bir antrenmana en fazla ne kadar süre ayırabilirsin?",
         list(MAX_DURATION_OPTIONS.keys()),
         index=list(MAX_DURATION_OPTIONS.keys()).index(max_duration_label),
+    )
+    st.sidebar.caption(
+        "Bu süre önerilen hedef değil, tek seans için üst sınırdır."
     )
 
     energy_level = st.sidebar.selectbox(
@@ -861,7 +883,7 @@ def render_sidebar_context_form(existing_context):
     return manual_context
 
 
-def render_sidebar_actions():
+def render_sidebar_actions(current_manual_context):
     st.sidebar.header("Çalıştır")
 
     if st.sidebar.button("Sample data kullan", use_container_width=True):
@@ -878,7 +900,14 @@ def render_sidebar_actions():
         help="Kapalıyken OpenAI API çağrısı yapılmaz.",
     )
 
-    if st.sidebar.button("Pipeline çalıştır", use_container_width=True):
+    if st.sidebar.button(
+        "Check-in'i kaydet ve planı oluştur",
+        use_container_width=True,
+    ):
+        write_json(
+            MANUAL_CONTEXT_PATH,
+            current_manual_context,
+        )
         result = run_local_pipeline(use_llm=use_llm)
 
         st.session_state["last_pipeline_stdout"] = result.stdout
@@ -886,7 +915,9 @@ def render_sidebar_actions():
         st.session_state["last_pipeline_returncode"] = result.returncode
 
         if result.returncode == 0:
-            st.sidebar.success("Pipeline tamamlandı.")
+            st.sidebar.success(
+                "Check-in kaydedildi ve plan güncellendi."
+            )
             st.rerun()
         else:
             st.sidebar.error("Pipeline hata aldı.")
@@ -901,26 +932,10 @@ def render_hero(coach_context):
 
     if not coach_context:
         st.info(
-            "Başlamak için soldan context kaydet, sample data seç veya mevcut local data ile pipeline çalıştır."
+            "Başlamak için soldan check-in kaydet, sample data seç "
+            "veya mevcut local data ile pipeline çalıştır."
         )
-        return
 
-    final_decision = coach_context.get("final_decision", {})
-    rules = coach_context.get("rules", {})
-    manual_context = coach_context.get("manual_context", {})
-
-    priority_label = priority_action_label(
-        final_decision.get("priority"),
-        manual_context,
-    )
-
-    st.markdown(
-        f"""
-        ### Haftalık koç özeti
-
-        **{label(final_decision.get("weekly_load"))}** · {priority_label} · {label(rules.get("progression_status"))}
-        """
-    )
 
 def build_action_items(coach_context):
     if not coach_context:
@@ -1058,6 +1073,366 @@ def render_main_output(coach_context):
         )
 
 
+
+def escape_ui_text(value):
+    if value is None:
+        return "-"
+    return html.escape(str(value))
+
+
+def render_value_card(
+    title,
+    value,
+    *,
+    helper=None,
+    tone="default",
+):
+    helper_html = (
+        f'<div class="product-value-helper">'
+        f'{escape_ui_text(helper)}</div>'
+        if helper
+        else ""
+    )
+
+    st.markdown(
+        f"""
+        <div class="product-value-card product-value-card-{tone}">
+            <div class="product-value-title">
+                {escape_ui_text(title)}
+            </div>
+            <div class="product-value-content">
+                {escape_ui_text(value)}
+            </div>
+            {helper_html}
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_guidance_box(
+    title,
+    value,
+    *,
+    tone="neutral",
+):
+    st.markdown(
+        f"""
+        <div class="product-guidance product-guidance-{tone}">
+            <div class="product-guidance-title">
+                {escape_ui_text(title)}
+            </div>
+            <div class="product-guidance-value">
+                {escape_ui_text(value)}
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def render_status_message(view_model):
+    tone = view_model.get("status_tone")
+    message = view_model.get("status_message", "")
+
+    if tone == "success":
+        st.success(message)
+    elif tone == "warning":
+        st.warning(message)
+    elif tone == "error":
+        st.error(message)
+    else:
+        st.info(message)
+
+
+def render_plan_empty_state(view_model):
+    status = view_model.get("status")
+
+    if status == "missing":
+        with st.container(border=True):
+            st.markdown("#### Haftalık planını oluştur")
+            st.write(
+                "Soldaki Weekly Check-in'i kaydet ve ardından "
+                "**Pipeline çalıştır** düğmesine bas."
+            )
+            st.caption(
+                "Plan hazır olduğunda kesin gün, süre, efor ve "
+                "alternatif tarihler burada gösterilecek."
+            )
+        return True
+
+    if status == "invalid":
+        with st.container(border=True):
+            st.markdown("#### Weekly plan okunamadı")
+            st.write(
+                "Artifact temel yapısal beklentileri karşılamıyor. "
+                "Teknik sekmedeki Weekly Plan JSON ve pipeline logunu kontrol et."
+            )
+        return True
+
+    if status == "no_structured_training":
+        with st.container(border=True):
+            st.markdown("#### Bu hafta toparlanma öncelikli")
+            st.write(
+                "Sağlık veya toparlanma kısıtı nedeniyle yapılandırılmış "
+                "antrenman planlanmadı."
+            )
+            st.caption(
+                "Sistem bu durumda performans hedefi eklemez ve planı "
+                "zorla doldurmaz."
+            )
+        return False
+
+    if status == "no_sessions":
+        with st.container(border=True):
+            st.markdown("#### Bu pencere için seans yok")
+            st.write(
+                "Karar artifact'i bu rolling yedi günlük pencere için "
+                "uygulanabilir bir standalone seans üretmedi."
+            )
+        return False
+
+    return False
+
+
+def render_weekly_plan_product(coach_context, weekly_plan):
+    view_model = build_weekly_plan_view_model(
+        coach_context,
+        weekly_plan,
+    )
+
+    render_status_message(view_model)
+
+    status_tone = view_model.get("status_tone", "info")
+
+    with st.container(border=True):
+        st.markdown(
+            f"""
+            <div class="weekly-focus-card weekly-focus-{escape_ui_text(status_tone)}">
+                <div class="weekly-focus-eyebrow">BU HAFTANIN ODAĞI</div>
+                <div class="weekly-focus-title">
+                    {escape_ui_text(view_model["focus"])}
+                </div>
+                <div class="weekly-focus-status">
+                    {escape_ui_text(view_model["status_label"])}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        summary_col1, summary_col2 = st.columns(2)
+        summary_col3, summary_col4 = st.columns(2)
+
+        with summary_col1:
+            render_value_card(
+                "Planlanan seans",
+                view_model["session_count"],
+                helper="Standalone seans sayısı",
+                tone="accent",
+            )
+
+        with summary_col2:
+            duration = view_model["total_duration_min"]
+            render_value_card(
+                "Toplam yaklaşık süre",
+                f"{duration} dk" if duration else "-",
+                helper="Add-on süreleri dahil",
+                tone="accent",
+            )
+
+        with summary_col3:
+            render_value_card(
+                "Plan penceresi",
+                view_model["horizon_label"],
+                helper="Rolling yedi gün",
+            )
+
+        with summary_col4:
+            render_value_card(
+                "Yoğunluk",
+                view_model["intensity_summary"],
+                helper="Ana efor sınırı",
+            )
+
+        constraints = view_model.get("constraints") or []
+        if constraints:
+            st.caption(" · ".join(constraints))
+
+        applied_context = (
+            view_model.get("applied_context") or {}
+        )
+
+        capacity_notice = applied_context.get(
+            "capacity_notice"
+        )
+        if capacity_notice:
+            render_guidance_box(
+                "Check-in nasıl uygulandı?",
+                capacity_notice,
+                tone="neutral",
+            )
+
+        intent_notice = applied_context.get(
+            "intent_notice"
+        )
+        if intent_notice:
+            render_guidance_box(
+                "Yarış niyeti hakkında",
+                intent_notice,
+                tone="reference",
+            )
+
+    should_stop = render_plan_empty_state(view_model)
+    if should_stop:
+        return view_model
+
+    sessions = view_model.get("sessions") or []
+
+    if sessions:
+        st.markdown("### Antrenmanlar")
+
+    for index, session in enumerate(sessions, start=1):
+        with st.container(border=True):
+            st.markdown(
+                f"#### {index}. {session['date_label']} — "
+                f"{session['title']}"
+            )
+            st.caption(session["modality"])
+
+            detail_col1, detail_col2, detail_col3 = st.columns(
+                [0.85, 0.85, 1.3]
+            )
+
+            with detail_col1:
+                render_value_card(
+                    "Ana çalışma",
+                    session["main_duration"]["primary"],
+                    helper=(
+                        "Aralık: "
+                        f"{session['main_duration']['range']}"
+                        if session["main_duration"]["range"]
+                        else None
+                    ),
+                    tone="accent",
+                )
+
+            with detail_col2:
+                render_value_card(
+                    "Toplam seans",
+                    session["total_duration"]["primary"],
+                    helper=(
+                        "Aralık: "
+                        f"{session['total_duration']['range']}"
+                        if session["total_duration"]["range"]
+                        else None
+                    ),
+                    tone="accent",
+                )
+
+            with detail_col3:
+                render_value_card(
+                    "Efor",
+                    session["effort_label"],
+                    helper="Birincil uygulama rehberi",
+                )
+
+            guidance_items = []
+
+            if session.get("pace"):
+                guidance_items.append(
+                    (
+                        "Pace referansı",
+                        session["pace"]["label"],
+                    )
+                )
+
+            if session.get("distance"):
+                guidance_items.append(
+                    (
+                        "Mesafe referansı",
+                        session["distance"]["label"],
+                    )
+                )
+
+            if guidance_items:
+                guidance_columns = st.columns(len(guidance_items))
+
+                for column, (title, value) in zip(
+                    guidance_columns,
+                    guidance_items,
+                ):
+                    with column:
+                        render_guidance_box(
+                            title,
+                            value,
+                            tone="reference",
+                        )
+
+            add_ons = session.get("add_ons") or []
+            if add_ons:
+                add_on_labels = [
+                    add_on["label"]
+                    for add_on in add_ons
+                ]
+                render_guidance_box(
+                    "Aynı gün eklenecek çalışma",
+                    " · ".join(add_on_labels),
+                    tone="addon",
+                )
+
+            alternatives = session.get("alternatives") or []
+            if alternatives:
+                st.caption(
+                    "Esnek alternatifler: "
+                    + " veya ".join(alternatives)
+                )
+
+    unscheduled = (
+        view_model.get("unscheduled_sessions") or []
+    )
+    if unscheduled:
+        st.markdown("### Takvime yerleşemeyen seanslar")
+        for session in unscheduled:
+            st.warning(
+                f"**{session['title']}** — "
+                f"{session['reason']}"
+            )
+
+    reasons = view_model.get("reasons") or []
+    avoid_items = view_model.get("avoid_items") or []
+
+    if reasons or avoid_items:
+        st.markdown("### Planın Açıklaması")
+        explanation_col1, explanation_col2 = st.columns(
+            [1.45, 0.85]
+        )
+
+        with explanation_col1:
+            with st.container(border=True):
+                st.markdown("#### Neden bu plan?")
+                if reasons:
+                    for reason in reasons:
+                        st.write(f"• {reason}")
+                else:
+                    st.caption(
+                        "Karar artifact'i ek gerekçe taşımıyor."
+                    )
+
+        with explanation_col2:
+            with st.container(border=True):
+                st.markdown("#### Bu hafta kaçın")
+                if avoid_items:
+                    for item in avoid_items:
+                        st.write(f"• {item}")
+                else:
+                    st.caption(
+                        "Ek bir kaçınma kuralı bulunmuyor."
+                    )
+
+    return view_model
+
+
 def render_primary_coach_message():
     coach_message = read_text(COACH_MESSAGE_PATH)
 
@@ -1156,36 +1531,71 @@ def render_decision_cards(coach_context):
     rules = coach_context.get("rules", {})
     manual_context = coach_context.get("manual_context", {})
 
-    col1, col2, col3, col4 = st.columns(4)
+    first_row = st.columns(4)
 
-    with col1:
-        st.metric("Haftalık yük", label(final_decision.get("weekly_load")))
+    decision_values = [
+        (
+            "Haftalık yük",
+            label(final_decision.get("weekly_load")),
+        ),
+        (
+            "Koşu",
+            label(final_decision.get("running")),
+        ),
+        (
+            "Bisiklet / Trainer",
+            cycling_action_label(
+                final_decision.get("cycling"),
+                manual_context,
+            ),
+        ),
+        (
+            "Risk",
+            label(rules.get("risk_level")),
+        ),
+    ]
 
-    with col2:
-        st.metric("Koşu", label(final_decision.get("running")))
+    for column, (title, value) in zip(
+        first_row,
+        decision_values,
+    ):
+        with column:
+            render_value_card(title, value)
 
-    with col3:
-        st.metric("Bisiklet/Trainer", cycling_action_label(final_decision.get("cycling"), manual_context))
+    second_row = st.columns(3)
 
-    with col4:
-        st.metric("Risk", label(rules.get("risk_level")))
+    secondary_values = [
+        (
+            "Öncelik",
+            priority_action_label(
+                final_decision.get("priority"),
+                manual_context,
+            ),
+        ),
+        (
+            "Interval",
+            (
+                "Serbest"
+                if rules.get("intervals_allowed")
+                else "Hayır"
+            ),
+        ),
+        (
+            "Mobilite / Core",
+            label(
+                final_decision.get(
+                    "strength_or_mobility"
+                )
+            ),
+        ),
+    ]
 
-    col5, col6, col7 = st.columns(3)
-
-    with col5:
-        st.metric("Öncelik", priority_action_label(final_decision.get("priority"), manual_context))
-
-    with col6:
-        st.metric("Interval", "Serbest" if rules.get("intervals_allowed") else "Hayır")
-
-    with col7:
-        st.metric("Mobilite/Core", label(final_decision.get("strength_or_mobility")))
-
-    reason = final_decision.get("reason")
-
-    if reason:
-        st.markdown("#### Neden?")
-        st.info(reason)
+    for column, (title, value) in zip(
+        second_row,
+        secondary_values,
+    ):
+        with column:
+            render_value_card(title, value)
 
 
 def render_metrics(coach_context):
@@ -1405,17 +1815,24 @@ def render_feedback_form(coach_context):
 
     st.success("Feedback kaydedildi. Bu ileride karar motorunu kişiselleştirmek için kullanılabilir.")
 
-def render_reports(coach_context):
+def render_reports(
+    coach_context,
+    weekly_plan,
+    session_candidates,
+    session_selection,
+):
     st.subheader("Teknik detaylar")
 
     weekly_review = read_text(WEEKLY_REVIEW_PATH)
     coach_message = read_text(COACH_MESSAGE_PATH)
 
-    tab1, tab2, tab3, tab4 = st.tabs(
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
         [
             "Koç mesajı arşivi",
             "Teknik haftalık rapor",
+            "Weekly Plan JSON",
             "Teknik context",
+            "Planning lineage",
             "Çalıştırma logu",
         ]
     )
@@ -1449,12 +1866,35 @@ def render_reports(coach_context):
             st.info("weekly_review.md henüz yok.")
 
     with tab3:
+        if weekly_plan:
+            st.json(weekly_plan)
+        else:
+            st.info("weekly_plan.json henüz yok.")
+
+    with tab4:
         if coach_context:
             st.json(coach_context)
         else:
             st.info("coach_context.json henüz yok.")
 
-    with tab4:
+    with tab5:
+        lineage_col1, lineage_col2 = st.columns(2)
+
+        with lineage_col1:
+            st.markdown("#### Session candidates")
+            if session_candidates:
+                st.json(session_candidates)
+            else:
+                st.info("session_candidates.json henüz yok.")
+
+        with lineage_col2:
+            st.markdown("#### Session selection")
+            if session_selection:
+                st.json(session_selection)
+            else:
+                st.info("session_selection.json henüz yok.")
+
+    with tab6:
         stdout = st.session_state.get("last_pipeline_stdout")
         stderr = st.session_state.get("last_pipeline_stderr")
         returncode = st.session_state.get("last_pipeline_returncode")
@@ -1469,6 +1909,59 @@ def render_reports(coach_context):
 
             if stderr:
                 st.code(stderr, language="text")
+
+
+def render_product_workspace(
+    coach_context,
+    weekly_plan,
+    session_candidates,
+    session_selection,
+):
+    plan_tab, data_tab, feedback_tab, technical_tab = st.tabs(
+        [
+            "Haftalık Plan",
+            "Veriler ve Karar",
+            "Feedback",
+            "Teknik Detaylar",
+        ]
+    )
+
+    with plan_tab:
+        render_weekly_plan_product(
+            coach_context,
+            weekly_plan,
+        )
+
+        st.divider()
+        render_primary_coach_message()
+
+    with data_tab:
+        render_decision_cards(coach_context)
+
+        st.divider()
+        render_compact_metrics(coach_context)
+
+        st.divider()
+        render_context_summary(coach_context)
+
+    with feedback_tab:
+        render_feedback_form(coach_context)
+
+    with technical_tab:
+        with st.expander(
+            "Local dosya durumu",
+            expanded=False,
+        ):
+            render_status_pills()
+
+        st.divider()
+
+        render_reports(
+            coach_context,
+            weekly_plan,
+            session_candidates,
+            session_selection,
+        )
 
 def inject_custom_css():
     st.markdown(
@@ -1579,6 +2072,128 @@ def inject_custom_css():
             border-radius: 12px;
         }
 
+
+
+        /* Top-level workspace tabs */
+        div[data-testid="stTabs"] button[data-baseweb="tab"] {
+            min-height: 44px;
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        /* Product value cards: long text must wrap, never ellipsize */
+        .product-value-card {
+            min-height: 122px;
+            height: 100%;
+            padding: 15px 16px;
+            border: 1px solid #e2ebe6;
+            border-radius: 14px;
+            background: #ffffff;
+            box-shadow: 0 4px 14px rgba(24, 58, 49, 0.04);
+            overflow-wrap: anywhere;
+        }
+
+        .product-value-card-accent {
+            background: #f7fcf9;
+            border-color: #cfe6da;
+        }
+
+        .product-value-title {
+            color: #63736c;
+            font-size: 0.84rem;
+            line-height: 1.25;
+            font-weight: 650;
+            margin-bottom: 8px;
+        }
+
+        .product-value-content {
+            color: #163b34;
+            font-size: 1.43rem;
+            line-height: 1.2;
+            font-weight: 650;
+            letter-spacing: -0.025em;
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+        }
+
+        .product-value-helper {
+            color: #76857f;
+            font-size: 0.78rem;
+            line-height: 1.35;
+            margin-top: 9px;
+        }
+
+        .product-guidance {
+            height: 100%;
+            padding: 13px 15px;
+            border-radius: 12px;
+            margin-top: 4px;
+            margin-bottom: 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .product-guidance-neutral {
+            background: #f8fbfa;
+            border: 1px solid #dce8e2;
+        }
+
+        .product-guidance-reference {
+            background: #f6f8f7;
+            border: 1px solid #e2e8e5;
+        }
+
+        .product-guidance-addon {
+            background: #f0faf4;
+            border: 1px solid #cce8d7;
+        }
+
+        .product-guidance-title {
+            color: #53645d;
+            font-size: 0.79rem;
+            font-weight: 750;
+            margin-bottom: 5px;
+        }
+
+        .product-guidance-value {
+            color: #24352f;
+            font-size: 0.91rem;
+            line-height: 1.45;
+        }
+
+        /* Weekly plan product view */
+        .weekly-focus-card {
+            padding: 4px 2px 18px 2px;
+        }
+
+        .weekly-focus-eyebrow {
+            color: #5f6f68;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            margin-bottom: 8px;
+        }
+
+        .weekly-focus-title {
+            color: #102820;
+            font-size: 1.55rem;
+            line-height: 1.25;
+            font-weight: 750;
+            letter-spacing: -0.025em;
+            max-width: 820px;
+        }
+
+        .weekly-focus-status {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #e8f5ef;
+            color: #176348;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
         /* Small helper cards */
         .coach-card {
             border-radius: 16px;
@@ -1637,9 +2252,11 @@ def main():
         default=get_default_manual_context(),
     )
 
-    render_sidebar_context_form(existing_context)
+    current_manual_context = render_sidebar_context_form(
+        existing_context
+    )
     st.sidebar.divider()
-    render_sidebar_actions()
+    render_sidebar_actions(current_manual_context)
     st.sidebar.divider()
     st.sidebar.caption(
         "Local mode: Garmin şifresi alınmaz. "
@@ -1647,41 +2264,26 @@ def main():
     )
 
     coach_context = load_json(COACH_CONTEXT_PATH, default=None)
+    weekly_plan = load_json(WEEKLY_PLAN_PATH, default=None)
+    session_candidates = load_json(
+        SESSION_CANDIDATES_PATH,
+        default=None,
+    )
+    session_selection = load_json(
+        SESSION_SELECTION_PATH,
+        default=None,
+    )
 
     render_hero(coach_context)
 
     st.divider()
 
-    render_main_output(coach_context)
-
-    st.divider()
-
-    render_primary_coach_message()
-
-    st.divider()
-
-    render_decision_cards(coach_context)
-
-    st.divider()
-
-    render_compact_metrics(coach_context)
-
-    st.divider()
-
-    render_context_summary(coach_context)
-
-    st.divider()
-
-    render_feedback_form(coach_context)
-
-    st.divider()
-
-    with st.expander("Local dosya durumu"):
-        render_status_pills()
-
-    st.divider()
-
-    render_reports(coach_context)
+    render_product_workspace(
+        coach_context,
+        weekly_plan,
+        session_candidates,
+        session_selection,
+    )
 
 
 if __name__ == "__main__":

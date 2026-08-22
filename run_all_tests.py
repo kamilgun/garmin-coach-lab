@@ -247,6 +247,24 @@ def build_steps(
             category="scenario",
         ),
         TestStep(
+            step_id="weekly_plan_view_model",
+            name="Weekly Plan View-Model Tests",
+            command=(
+                python_executable,
+                "run_weekly_plan_view_tests.py",
+            ),
+            category="presentation",
+        ),
+        TestStep(
+            step_id="product_ui_structure",
+            name="Product UI Structure Tests",
+            command=(
+                python_executable,
+                "run_product_ui_structure_tests.py",
+            ),
+            category="presentation",
+        ),
+        TestStep(
             step_id="weekly_review_reporting",
             name="Weekly Review Reporting Tests",
             command=(
