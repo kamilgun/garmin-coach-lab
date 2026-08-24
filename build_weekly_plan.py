@@ -2,16 +2,14 @@ import argparse
 import json
 import os
 import tempfile
+from pathlib import Path
+
+from coach_engine.workspace import get_runtime_workspace
 
 from coach_engine.planning.weekly_plan import (
     build_weekly_plan_bundle,
 )
 
-
-COACH_CONTEXT_PATH = os.path.join("data", "coach_context.json")
-CANDIDATES_PATH = os.path.join("data", "session_candidates.json")
-SELECTION_PATH = os.path.join("data", "session_selection.json")
-WEEKLY_PLAN_PATH = os.path.join("data", "weekly_plan.json")
 
 
 def load_json(path):
@@ -20,8 +18,13 @@ def load_json(path):
 
 
 def write_json_atomic(path, data):
-    directory = os.path.dirname(path) or "."
-    os.makedirs(directory, exist_ok=True)
+    path = Path(path)
+    directory = path.parent
+
+    directory.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     temporary_path = None
 
@@ -50,7 +53,7 @@ def write_json_atomic(path, data):
         raise
 
 
-def print_summary(bundle):
+def print_summary(bundle, runtime):
     candidates = bundle["session_candidates"]
     selection = bundle["session_selection"]
     weekly_plan = bundle["weekly_plan"]
@@ -73,9 +76,9 @@ def print_summary(bundle):
         )
 
     print("\nArtifacts:")
-    print(f"- {CANDIDATES_PATH}")
-    print(f"- {SELECTION_PATH}")
-    print(f"- {WEEKLY_PLAN_PATH}")
+    print(f"- {runtime.session_candidates_path}")
+    print(f"- {runtime.session_selection_path}")
+    print(f"- {runtime.weekly_plan_path}")
 
 
 def main():
@@ -98,14 +101,17 @@ def main():
         help="Final weekly_plan JSON'unu terminale de yazdırır.",
     )
     args = parser.parse_args()
+    runtime = get_runtime_workspace()
 
-    if not os.path.exists(COACH_CONTEXT_PATH):
+    if not runtime.coach_context_path.exists():
         raise FileNotFoundError(
-            "data/coach_context.json bulunamadı. "
+            f"{runtime.coach_context_path} bulunamadı. "
             "Önce build_coach_context.py çalıştır."
         )
 
-    coach_context = load_json(COACH_CONTEXT_PATH)
+    coach_context = load_json(
+        runtime.coach_context_path
+    )
     bundle = build_weekly_plan_bundle(
         coach_context,
         start_date=args.start_date,
@@ -113,19 +119,24 @@ def main():
 
     # Ara artifact'ler debug ve lineage için korunur.
     write_json_atomic(
-        CANDIDATES_PATH,
+        runtime.session_candidates_path,
         bundle["session_candidates"],
     )
+
     write_json_atomic(
-        SELECTION_PATH,
+        runtime.session_selection_path,
         bundle["session_selection"],
     )
+
     write_json_atomic(
-        WEEKLY_PLAN_PATH,
+        runtime.weekly_plan_path,
         bundle["weekly_plan"],
     )
 
-    print_summary(bundle)
+    print_summary(
+        bundle,
+        runtime,
+    )
 
     if args.print_json:
         print("\nFinal weekly_plan.json:")

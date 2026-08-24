@@ -11,6 +11,7 @@ from coach_engine.context.context_signals import (
 from datetime import datetime
 import json
 import os
+from coach_engine.workspace import get_runtime_workspace
 
 
 ENGINE_VERSION = "0.6.0"
@@ -586,14 +587,27 @@ def build_final_decision(rules, manual_context, context_signals=None):
         context_signals=context_signals,
     )
 
-def build_coach_context():
-    activity_data = load_json_if_exists("data/activity_summary.json")
-    performance_data = load_json_if_exists("data/performance_summary.json")
-    athlete_profile = load_json_if_exists("athlete_profile.json")
-    manual_context = load_json_if_exists("data/manual_context.json", default={})
+def build_coach_context(runtime=None):
+    runtime = runtime or get_runtime_workspace()
+
+    activity_data = load_json_if_exists(
+        runtime.activity_summary_path
+    )
+    performance_data = load_json_if_exists(
+        runtime.performance_summary_path
+    )
+    athlete_profile = load_json_if_exists(
+        runtime.athlete_profile_path
+    )
+    manual_context = load_json_if_exists(
+        runtime.manual_context_path,
+        default={},
+    )
 
     if activity_data is None:
-        raise FileNotFoundError("data/activity_summary.json bulunamadı.")
+        raise FileNotFoundError(
+            f"{runtime.activity_summary_path} bulunamadı."
+        )
 
     s7 = activity_data["summary_7_days"]
     s30 = activity_data["summary_30_days"]
@@ -635,11 +649,27 @@ def build_coach_context():
 
 
 def main():
-    coach_context = build_coach_context()
-    write_json("data/coach_context.json", coach_context)
+    runtime = get_runtime_workspace()
 
-    print(json.dumps(coach_context, ensure_ascii=False, indent=2))
-    print("\nCoach context yazıldı: data/coach_context.json")
+    coach_context = build_coach_context(runtime)
+
+    write_json(
+        runtime.coach_context_path,
+        coach_context,
+    )
+
+    print(
+        json.dumps(
+            coach_context,
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+    print(
+        f"\nCoach context yazıldı: "
+        f"{runtime.coach_context_path}"
+    )
 
 
 if __name__ == "__main__":
