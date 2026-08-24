@@ -9,6 +9,12 @@ from .profile_workspace import (
     normalize_profile_id,
 )
 
+from .runtime import (
+    RuntimeWorkspace,
+    build_profile_runtime_env,
+    get_runtime_workspace,
+)
+
 __all__ = [
     "ProfileDefinition",
     "ProfileWorkspace",
@@ -16,4 +22,8 @@ __all__ = [
     "get_profile_workspace",
     "load_profile_registry",
     "normalize_profile_id",
+    "RuntimeWorkspace",
+    "build_profile_runtime_env",
+    "get_runtime_workspace",
 ]
+

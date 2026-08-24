@@ -1,10 +1,10 @@
 import json
-import os
 from datetime import timedelta
-from garminconnect import Garmin
-from pathlib import Path
 
-TOKENSTORE = Path.home() / ".garminconnect"
+from garminconnect import Garmin
+
+from coach_engine.workspace import get_runtime_workspace
+
 
 
 def seconds_to_hms(seconds):
@@ -14,8 +14,10 @@ def seconds_to_hms(seconds):
 
 
 def main():
+    runtime = get_runtime_workspace()
+
     api = Garmin()
-    api.login(str(TOKENSTORE))
+    api.login(str(runtime.garmin_tokenstore))
 
     race = api.get_race_predictions()
 
@@ -29,11 +31,17 @@ def main():
         }
     }
 
-    os.makedirs("data", exist_ok=True)
+    runtime.data_dir.mkdir(parents=True, exist_ok=True)
 
-    with open("data/performance_summary.json", "w", encoding="utf-8") as f:
+    with runtime.performance_summary_path.open(
+        "w",
+        encoding="utf-8",
+    ) as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
 
+    print(
+        f"\nJSON yazıldı: {runtime.performance_summary_path}"
+    )
     print(json.dumps(output, indent=2, ensure_ascii=False))
 
 

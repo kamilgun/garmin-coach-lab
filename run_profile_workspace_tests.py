@@ -1,11 +1,14 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import os
+from unittest.mock import patch
 
 from coach_engine.workspace import (
+    build_profile_runtime_env,
     get_profile_workspace,
+    get_runtime_workspace,
     normalize_profile_id,
 )
-
 
 def test_normalize_profile_id():
     assert normalize_profile_id("kamil") == "kamil"
@@ -101,6 +104,49 @@ def test_directory_creation():
         assert workspace.data_dir.exists()
         assert workspace.garmin_tokenstore.exists()
 
+def test_legacy_runtime_workspace():
+    with patch.dict(os.environ, {}, clear=True):
+        runtime = get_runtime_workspace()
+
+        assert runtime.profile_id is None
+        assert runtime.data_dir == Path("data")
+        assert runtime.athlete_profile_path == Path(
+            "athlete_profile.json"
+        )
+        assert (
+            runtime.garmin_tokenstore
+            == Path.home() / ".garminconnect"
+        )
+
+
+def test_profile_runtime_workspace():
+    with TemporaryDirectory() as repo_tmp, TemporaryDirectory() as private_tmp:
+        workspace = get_profile_workspace(
+            "kamil",
+            repo_root=repo_tmp,
+            private_root=private_tmp,
+        )
+
+        env = build_profile_runtime_env(workspace)
+
+        with patch.dict(os.environ, env, clear=True):
+            runtime = get_runtime_workspace()
+
+            assert runtime.profile_id == "kamil"
+            assert runtime.data_dir == workspace.data_dir
+            assert (
+                runtime.athlete_profile_path
+                == workspace.athlete_profile_path
+            )
+            assert (
+                runtime.garmin_tokenstore
+                == workspace.garmin_tokenstore
+            )
+            assert (
+                runtime.weekly_plan_path
+                == workspace.weekly_plan_path
+            )        
+
 
 if __name__ == "__main__":
     test_normalize_profile_id()
@@ -108,5 +154,7 @@ if __name__ == "__main__":
     test_profile_isolation()
     test_expected_paths()
     test_directory_creation()
+    test_legacy_runtime_workspace()
+    test_profile_runtime_workspace()
 
     print("All profile workspace tests passed.")

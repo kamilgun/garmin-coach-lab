@@ -1,7 +1,6 @@
 import json
-import os
 from datetime import datetime
-from pathlib import Path
+
 from garminconnect import Garmin
 
 from coach_engine.metrics.activity_history import (
@@ -9,11 +8,7 @@ from coach_engine.metrics.activity_history import (
     build_running_profile,
     summarize,
 )
-
-
-from pathlib import Path
-
-TOKENSTORE = Path.home() / ".garminconnect"
+from coach_engine.workspace import get_runtime_workspace
 
 
 def print_summary(summary):
@@ -28,8 +23,10 @@ def print_summary(summary):
 
 
 def main():
+    runtime = get_runtime_workspace()
+
     api = Garmin()
-    api.login(str(TOKENSTORE))
+    api.login(str(runtime.garmin_tokenstore))
 
     # Garmin'den gelen aktivite detayları burada zaten mevcut.
     activities = api.get_activities(0, 100)
@@ -54,7 +51,7 @@ def main():
         f"{running_profile.get('pace_distribution_display', {}).get('median')}"
     )
 
-    os.makedirs("data", exist_ok=True)
+    runtime.data_dir.mkdir(parents=True, exist_ok=True)
 
     output = {
         "schema_version": "2.0",
@@ -67,8 +64,15 @@ def main():
         "running_profile_30_days": running_profile,
     }
 
-    with open("data/activity_summary.json", "w", encoding="utf-8") as f:
+    with runtime.activity_summary_path.open(
+        "w",
+        encoding="utf-8",
+    ) as f:
         json.dump(output, f, indent=2, ensure_ascii=False)
+
+    print(
+        f"\nJSON yazıldı: {runtime.activity_summary_path}"
+    )
 
     print("\nJSON yazıldı: data/activity_summary.json")
 
