@@ -1,12 +1,9 @@
 import json
 import os
-
+from coach_engine.workspace import get_runtime_workspace
 from coach_engine.narration.llm_prompt import build_llm_coach_prompt
 
 
-COACH_CONTEXT_PATH = os.path.join("data", "coach_context.json")
-WEEKLY_PLAN_PATH = os.path.join("data", "weekly_plan.json")
-OUTPUT_PATH = os.path.join("data", "llm_coach_prompt.md")
 
 
 def load_json(path, required=False):
@@ -28,12 +25,15 @@ def write_text(path, content):
 
 
 def main():
+    runtime = get_runtime_workspace()
+
     coach_context = load_json(
-        COACH_CONTEXT_PATH,
+        runtime.coach_context_path,
         required=True,
     )
+
     weekly_plan = load_json(
-        WEEKLY_PLAN_PATH,
+        runtime.weekly_plan_path,
         required=False,
     )
 
@@ -42,14 +42,21 @@ def main():
         weekly_plan=weekly_plan,
     )
 
-    write_text(OUTPUT_PATH, prompt)
+    write_text(
+        runtime.llm_coach_prompt_path,
+        prompt,
+    )
 
     print(prompt)
-    print(f"\nLLM coach prompt yazıldı: {OUTPUT_PATH}")
+
+    print(
+        f"\nLLM coach prompt yazıldı: "
+        f"{runtime.llm_coach_prompt_path}"
+    )
 
     if weekly_plan is None:
         print(
-            "[WARN] data/weekly_plan.json bulunamadı; "
+            f"[WARN] {runtime.weekly_plan_path} bulunamadı; "
             "prompt kesin plan ayrıntıları olmadan üretildi."
         )
 
