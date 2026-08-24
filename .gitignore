@@ -86,3 +86,6 @@ README_old.md
 .claude/
 
 docs/PROJECT_INVENTORY.md
+
+# Local profile registry
+profiles.local.json

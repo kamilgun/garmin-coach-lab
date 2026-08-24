@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "profiles": [
+    {
+      "id": "athlete_1",
+      "display_name": "Athlete 1",
+      "enabled": true
+    },
+    {
+      "id": "athlete_2",
+      "display_name": "Athlete 2",
+      "enabled": true
+    }
+  ]
+}
