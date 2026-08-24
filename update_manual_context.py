@@ -1,9 +1,8 @@
 import json
 import os
 import sys
+from coach_engine.workspace import get_runtime_workspace
 
-
-OUTPUT_PATH = "data/manual_context.json"
 
 
 def configure_stdout():
@@ -66,6 +65,8 @@ def write_json(path, data):
 
 def main():
     configure_stdout()
+
+    runtime = get_runtime_workspace()
 
     print("\nGarmin Coach Lab - Güncel Durum Girişi")
     print("======================================")
@@ -153,11 +154,23 @@ def main():
         "user_note": user_note,
     }
 
-    write_json(OUTPUT_PATH, manual_context)
+    write_json(
+        runtime.manual_context_path,
+        manual_context,
+    )
 
     print("\nmanual_context.json güncellendi:")
-    print(json.dumps(manual_context, ensure_ascii=False, indent=2))
-    print(f"\nYazılan dosya: {OUTPUT_PATH}")
+    print(
+        json.dumps(
+            manual_context,
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+    print(
+        f"\nYazılan dosya: "
+        f"{runtime.manual_context_path}"
+    )
 
 
 if __name__ == "__main__":

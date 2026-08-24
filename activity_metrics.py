@@ -74,7 +74,6 @@ def main():
         f"\nJSON yazıldı: {runtime.activity_summary_path}"
     )
 
-    print("\nJSON yazıldı: data/activity_summary.json")
 
 
 if __name__ == "__main__":
