@@ -79,7 +79,15 @@ def run_tests():
     assert "text-overflow: clip" in source
     assert "overflow-wrap: anywhere" in source
     assert "Check-in\'i kaydet ve planı oluştur" in source
-    assert "render_sidebar_actions(current_manual_context)" in source
+    assert "render_sidebar_actions(" in source
+    assert "current_manual_context" in source
+    assert "selected_profile.profile_id" in source
+
+    assert "render_profile_selector()" in source
+    assert "get_enabled_profiles" in source
+    assert "get_profile_workspace" in source
+    assert "configure_app_workspace" in source
+    assert '"--profile"' in source
 
     print("All product UI structure tests passed.")
 

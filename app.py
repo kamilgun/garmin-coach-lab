@@ -7,15 +7,32 @@ from pathlib import Path
 from datetime import datetime
 
 import streamlit as st
+from coach_engine.workspace import (
+    get_enabled_profiles,
+    get_profile_workspace,
+)
 
 from coach_engine.presentation import (
     build_weekly_plan_view_model,
 )
 
 
-DATA_DIR = Path("data")
-SAMPLES_DIR = DATA_DIR / "samples"
+# Shared repository data.
+# Sample data belongs to the application, not to an athlete profile.
+SHARED_DATA_DIR = Path("data")
+SAMPLES_DIR = SHARED_DATA_DIR / "samples"
 
+SAMPLE_ACTIVITY_SUMMARY_PATH = (
+    SAMPLES_DIR / "activity_summary.sample.json"
+)
+SAMPLE_PERFORMANCE_SUMMARY_PATH = (
+    SAMPLES_DIR / "performance_summary.sample.json"
+)
+
+
+# Active profile paths.
+# These are configured at runtime after the user selects a profile.
+DATA_DIR = Path("data")
 MANUAL_CONTEXT_PATH = DATA_DIR / "manual_context.json"
 ACTIVITY_SUMMARY_PATH = DATA_DIR / "activity_summary.json"
 PERFORMANCE_SUMMARY_PATH = DATA_DIR / "performance_summary.json"
@@ -26,9 +43,6 @@ SESSION_SELECTION_PATH = DATA_DIR / "session_selection.json"
 WEEKLY_REVIEW_PATH = DATA_DIR / "weekly_review.md"
 COACH_MESSAGE_PATH = DATA_DIR / "coach_message.md"
 FEEDBACK_LOG_PATH = DATA_DIR / "feedback_log.jsonl"
-
-SAMPLE_ACTIVITY_SUMMARY_PATH = SAMPLES_DIR / "activity_summary.sample.json"
-SAMPLE_PERFORMANCE_SUMMARY_PATH = SAMPLES_DIR / "performance_summary.sample.json"
 
 
 WEEKLY_INTENT_OPTIONS = {
@@ -276,6 +290,37 @@ def priority_action_label(value, manual_context):
 
     return label(value)
 
+def configure_app_workspace(workspace):
+    """
+    Point the Streamlit UI to the selected athlete workspace.
+
+    The UI continues to use the existing path helpers, but every
+    user-specific artifact resolves to the active profile.
+    """
+    global DATA_DIR
+    global MANUAL_CONTEXT_PATH
+    global ACTIVITY_SUMMARY_PATH
+    global PERFORMANCE_SUMMARY_PATH
+    global COACH_CONTEXT_PATH
+    global WEEKLY_PLAN_PATH
+    global SESSION_CANDIDATES_PATH
+    global SESSION_SELECTION_PATH
+    global WEEKLY_REVIEW_PATH
+    global COACH_MESSAGE_PATH
+    global FEEDBACK_LOG_PATH
+
+    DATA_DIR = workspace.data_dir
+    MANUAL_CONTEXT_PATH = workspace.manual_context_path
+    ACTIVITY_SUMMARY_PATH = workspace.activity_summary_path
+    PERFORMANCE_SUMMARY_PATH = workspace.performance_summary_path
+    COACH_CONTEXT_PATH = workspace.coach_context_path
+    WEEKLY_PLAN_PATH = workspace.weekly_plan_path
+    SESSION_CANDIDATES_PATH = workspace.session_candidates_path
+    SESSION_SELECTION_PATH = workspace.session_selection_path
+    WEEKLY_REVIEW_PATH = workspace.weekly_review_path
+    COACH_MESSAGE_PATH = workspace.coach_message_path
+    FEEDBACK_LOG_PATH = workspace.feedback_log_path
+
 
 def ensure_data_dir():
     DATA_DIR.mkdir(exist_ok=True)
@@ -328,10 +373,15 @@ def copy_sample_data():
     shutil.copy2(SAMPLE_PERFORMANCE_SUMMARY_PATH, PERFORMANCE_SUMMARY_PATH)
 
 
-def run_local_pipeline(use_llm: bool = False):
+def run_local_pipeline(
+    profile_id: str,
+    use_llm: bool = False,
+):
     command = [
         sys.executable,
         "run_pipeline.py",
+        "--profile",
+        profile_id,
         "--skip-garmin",
     ]
 
@@ -883,7 +933,10 @@ def render_sidebar_context_form(existing_context):
     return manual_context
 
 
-def render_sidebar_actions(current_manual_context):
+def render_sidebar_actions(
+    current_manual_context,
+    profile_id,
+):
     st.sidebar.header("Çalıştır")
 
     if st.sidebar.button("Sample data kullan", use_container_width=True):
@@ -908,7 +961,10 @@ def render_sidebar_actions(current_manual_context):
             MANUAL_CONTEXT_PATH,
             current_manual_context,
         )
-        result = run_local_pipeline(use_llm=use_llm)
+        result = run_local_pipeline(
+            profile_id=profile_id,
+            use_llm=use_llm,
+        )
 
         st.session_state["last_pipeline_stdout"] = result.stdout
         st.session_state["last_pipeline_stderr"] = result.stderr
@@ -1479,6 +1535,93 @@ def render_primary_coach_message():
                 key="download_primary_coach_message",
             )
 
+def render_profile_selector():
+    try:
+        profiles = get_enabled_profiles()
+    except Exception as exc:
+        st.sidebar.error(
+            f"Profile registry yüklenemedi: {exc}"
+        )
+        st.stop()
+
+    if not profiles:
+        st.sidebar.error(
+            "Aktif local profile bulunamadı."
+        )
+        st.stop()
+
+    profiles_by_id = {
+        profile.profile_id: profile
+        for profile in profiles
+    }
+
+    profile_ids = list(profiles_by_id.keys())
+
+    previous_profile_id = st.session_state.get(
+        "active_profile_id"
+    )
+
+    default_index = 0
+
+    if previous_profile_id in profile_ids:
+        default_index = profile_ids.index(
+            previous_profile_id
+        )
+
+    st.sidebar.subheader("Aktif Sporcu")
+
+    selected_profile_id = st.sidebar.selectbox(
+        "Profil",
+        profile_ids,
+        index=default_index,
+        format_func=lambda profile_id: (
+            profiles_by_id[profile_id].display_name
+        ),
+        key="profile_selector",
+    )
+
+    if (
+        st.session_state.get("active_profile_id")
+        != selected_profile_id
+    ):
+        st.session_state["active_profile_id"] = (
+            selected_profile_id
+        )
+
+        # Previous athlete's pipeline log should not remain visible.
+        st.session_state.pop(
+            "last_pipeline_stdout",
+            None,
+        )
+        st.session_state.pop(
+            "last_pipeline_stderr",
+            None,
+        )
+        st.session_state.pop(
+            "last_pipeline_returncode",
+            None,
+        )
+
+    selected_profile = profiles_by_id[
+        selected_profile_id
+    ]
+
+    workspace = get_profile_workspace(
+        selected_profile.profile_id,
+        repo_root=Path.cwd(),
+    )
+
+    workspace.ensure_directories()
+
+    configure_app_workspace(
+        workspace
+    )
+
+    st.sidebar.caption(
+        f"Local profil: {selected_profile.display_name}"
+    )
+
+    return selected_profile, workspace
 
 def render_compact_metrics(coach_context):
     st.subheader("Antrenman özeti")
@@ -2245,6 +2388,12 @@ def main():
 
     inject_custom_css()
 
+    selected_profile, workspace = (
+        render_profile_selector()
+    )
+
+    st.sidebar.divider()
+
     ensure_data_dir()
 
     existing_context = load_json(
@@ -2256,7 +2405,10 @@ def main():
         existing_context
     )
     st.sidebar.divider()
-    render_sidebar_actions(current_manual_context)
+    render_sidebar_actions(
+        current_manual_context,
+        selected_profile.profile_id,
+    )
     st.sidebar.divider()
     st.sidebar.caption(
         "Local mode: Garmin şifresi alınmaz. "
