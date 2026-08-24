@@ -3,9 +3,17 @@ from datetime import date, datetime
 import os
 import subprocess
 import sys
+from pathlib import Path
+
+from coach_engine.workspace import (
+    build_profile_runtime_env,
+    get_enabled_profiles,
+    get_profile_workspace,
+    get_runtime_workspace,
+)
 
 
-PIPELINE_VERSION = "0.8.0"
+PIPELINE_VERSION = "0.9.0"
 
 
 def configure_stdout():
@@ -76,6 +84,38 @@ def parse_iso_date(value):
 
     return value
 
+def configure_profile_runtime(profile_id):
+    if not profile_id:
+        return get_runtime_workspace()
+
+    enabled_profiles = {
+        profile.profile_id: profile
+        for profile in get_enabled_profiles()
+    }
+
+    if profile_id not in enabled_profiles:
+        available = ", ".join(
+            sorted(enabled_profiles.keys())
+        ) or "(none)"
+
+        raise RuntimeError(
+            f"Profile '{profile_id}' bulunamadı veya aktif değil. "
+            f"Aktif profiller: {available}"
+        )
+
+    workspace = get_profile_workspace(
+        profile_id,
+        repo_root=Path.cwd(),
+    )
+
+    workspace.ensure_directories()
+
+    os.environ.update(
+        build_profile_runtime_env(workspace)
+    )
+
+    return get_runtime_workspace()    
+
 
 def check_required_paths(paths, errors):
     for path in paths:
@@ -83,7 +123,7 @@ def check_required_paths(paths, errors):
             errors.append(f"Gerekli dosya bulunamadı: {path}")
 
 
-def preflight_check(args, python_executable):
+def preflight_check(args, python_executable, runtime,):
     print("\n=== Preflight Check ===")
     print(f"Pipeline version: {PIPELINE_VERSION}")
     print(f"Python executable: {python_executable}")
@@ -109,7 +149,7 @@ def preflight_check(args, python_executable):
         )
     else:
         check_required_paths(
-            ["data/activity_summary.json"],
+            [runtime.activity_summary_path],
             errors,
         )
 
@@ -165,7 +205,7 @@ def preflight_check(args, python_executable):
     print("Preflight check: OK")
 
 
-def print_artifacts(skip_garmin, skip_llm):
+def print_artifacts(skip_garmin,skip_llm,runtime,):
     print("\n=== Pipeline tamamlandı ===")
     print(f"Pipeline version: {PIPELINE_VERSION}")
     print(f"Zaman: {datetime.now().isoformat(timespec='seconds')}")
@@ -175,23 +215,23 @@ def print_artifacts(skip_garmin, skip_llm):
     else:
         print("\nGüncellenen Garmin artifact'leri:")
 
-    print("- data/activity_summary.json")
-    print("- data/performance_summary.json")
+    print(f"- {runtime.activity_summary_path}")
+    print(f"- {runtime.performance_summary_path}")
 
     print("\nDecision artifact:")
-    print("- data/coach_context.json")
+    print(f"- {runtime.coach_context_path}")
 
     print("\nPlanning artifact'leri:")
-    print("- data/session_candidates.json")
-    print("- data/session_selection.json")
-    print("- data/weekly_plan.json")
+    print(f"- {runtime.session_candidates_path}")
+    print(f"- {runtime.session_selection_path}")
+    print(f"- {runtime.weekly_plan_path}")
 
     print("\nReporting / narration artifact'leri:")
-    print("- data/weekly_review.md")
-    print("- data/llm_coach_prompt.md")
+    print(f"- {runtime.weekly_review_path}")
+    print(f"- {runtime.llm_coach_prompt_path}")
 
     if not skip_llm:
-        print("- data/coach_message.md")
+        print(f"- {runtime.coach_message_path}")
 
 
 def main():
@@ -228,14 +268,38 @@ def main():
         ),
     )
 
+    parser.add_argument(
+        "--profile",
+        help=(
+            "Local profile ID. Örn: kamil veya burcu. "
+            "Verilmezse legacy single-profile workspace kullanılır."
+        ),
+    )
+
     args = parser.parse_args()
+
+    runtime = configure_profile_runtime(
+        args.profile
+    )
+
     python_executable = sys.executable
 
-    preflight_check(args, python_executable)
+    preflight_check(
+        args,
+        python_executable,
+        runtime,
+    )
 
     print("\nGarmin Coach Lab Pipeline")
     print("=========================")
     print(f"Version: {PIPELINE_VERSION}")
+    
+    if runtime.profile_id:
+        print(f"Profile: {runtime.profile_id}")
+        print(f"Data workspace: {runtime.data_dir}")
+    else:
+        print("Profile: legacy")
+        print(f"Data workspace: {runtime.data_dir}")
 
     if args.skip_garmin:
         print("Garmin refresh: SKIPPED")
@@ -304,6 +368,7 @@ def main():
     print_artifacts(
         skip_garmin=args.skip_garmin,
         skip_llm=args.skip_llm,
+        runtime=runtime,
     )
 
 
