@@ -1,13 +1,8 @@
 import json
 import os
 import tempfile
-
+from coach_engine.workspace import get_runtime_workspace
 from coach_engine.reporting.weekly_markdown import render_weekly_review
-
-
-COACH_CONTEXT_PATH = os.path.join("data", "coach_context.json")
-WEEKLY_PLAN_PATH = os.path.join("data", "weekly_plan.json")
-OUTPUT_PATH = os.path.join("data", "weekly_review.md")
 
 
 def load_json(path, required=False):
@@ -47,12 +42,15 @@ def write_text_atomic(path, content):
 
 
 def main():
+    runtime = get_runtime_workspace()
+
     coach_context = load_json(
-        COACH_CONTEXT_PATH,
+        runtime.coach_context_path,
         required=True,
     )
+
     weekly_plan = load_json(
-        WEEKLY_PLAN_PATH,
+        runtime.weekly_plan_path,
         required=False,
     )
 
@@ -61,14 +59,21 @@ def main():
         weekly_plan=weekly_plan,
     )
 
-    write_text_atomic(OUTPUT_PATH, review)
+    write_text_atomic(
+        runtime.weekly_review_path,
+        review,
+    )
 
     print(review)
-    print(f"\nMarkdown yazıldı: {OUTPUT_PATH}")
+
+    print(
+        f"\nMarkdown yazıldı: "
+        f"{runtime.weekly_review_path}"
+    )
 
     if weekly_plan is None:
         print(
-            "[WARN] data/weekly_plan.json bulunamadı; "
+            f"[WARN] {runtime.weekly_plan_path} bulunamadı; "
             "review fallback davranışıyla üretildi."
         )
 
