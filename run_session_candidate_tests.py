@@ -146,6 +146,124 @@ def run_tests():
     running_candidate = no_profile["candidates"][0]
     assert running_candidate["training_reference"]["data_available"] is False
 
+    # 7. Explicit weekly target preserves running
+    # frequency during return-after-break when recent
+    # running base exists.
+    dose_context = base_context()
+
+    dose_context["athlete"] = {
+        "weekly_target": {
+            "running_sessions": 2,
+            "cycling_sessions": 0,
+            "strength_or_mobility_sessions": 0,
+        },
+    }
+
+    dose_context["training_profile"][
+        "running_30_days"
+    ].update(
+        {
+            "runs_analyzed": 4,
+            "median_run_duration_min": 46.2,
+        }
+    )
+
+    dose_context["context_signals"][
+        "weekly_intent"
+    ] = "return_after_break"
+
+    dose_context["final_decision"].update(
+        {
+            "weekly_intent": "return_after_break",
+            "strength_or_mobility": "not_available",
+            "planning_limits": {
+                "max_sessions": 3,
+                "max_session_duration_min": 45,
+                "available_days": [],
+                "available_modalities": [
+                    "running",
+                ],
+            },
+        }
+    )
+
+    dose_candidates = build_session_candidates(
+        dose_context
+    )
+
+    assert candidate_ids(
+        dose_candidates
+    ) == [
+        "running_easy",
+        "running_easy_2",
+    ]
+
+    assert (
+        dose_candidates[
+            "standalone_capacity_requested"
+        ]
+        == 2
+    )
+
+    assert (
+        dose_candidates[
+            "selection_required"
+        ]
+        is False
+    )
+
+    assert (
+        dose_candidates[
+            "weekly_dose"
+        ]["resolved_sessions"]["running"]
+        == 2
+    )
+
+    assert (
+        dose_candidates["candidates"][0][
+            "duration_target_hint_min"
+        ]
+        == 30
+    )
+
+    assert (
+        dose_candidates["candidates"][1][
+            "duration_target_hint_min"
+        ]
+        == 30
+    )
+
+    # 8. Without recent running base,
+    # return-after-break reduces frequency too.
+    no_base_dose_context = deepcopy(
+        dose_context
+    )
+
+    no_base_dose_context[
+        "training_profile"
+    ]["running_30_days"][
+        "runs_analyzed"
+    ] = 0
+
+    no_base_candidates = (
+        build_session_candidates(
+            no_base_dose_context
+        )
+    )
+
+    assert candidate_ids(
+        no_base_candidates
+    ) == [
+        "running_easy",
+    ]
+
+    assert (
+        no_base_candidates[
+            "weekly_dose"
+        ]["resolved_sessions"]["running"]
+        == 1
+    )
+
     print("All session candidate tests passed.")
 
 

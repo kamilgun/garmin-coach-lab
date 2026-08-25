@@ -3,6 +3,9 @@ from __future__ import annotations
 from copy import deepcopy
 from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
+from coach_engine.planning.weekly_dose import (
+    resolve_weekly_dose,
+)
 
 
 SESSION_CANDIDATE_SCHEMA_VERSION = "1.0"
@@ -281,6 +284,40 @@ def build_session_candidates(
     limits = _planning_limits(coach_context)
     available_modalities = set(limits["available_modalities"])
 
+    weekly_dose = resolve_weekly_dose(
+        coach_context
+    )
+
+    dose_source = weekly_dose.get("source")
+
+    dose_driven = (
+        dose_source == "athlete_weekly_target"
+    )
+
+    dose_requested = (
+        weekly_dose.get("requested_sessions")
+        or {}
+    )
+
+    dose_resolved = (
+        weekly_dose.get("resolved_sessions")
+        or {}
+    )
+
+
+    def resolved_dose_count(
+        modality: str,
+        legacy_default: int,
+    ) -> int:
+        if not dose_driven:
+            return legacy_default
+
+        return _safe_int(
+            dose_resolved.get(modality),
+            default=0,
+            minimum=0,
+        )
+
     weekly_intent = final_decision.get(
         "weekly_intent",
         context_signals.get("weekly_intent"),
@@ -349,6 +386,7 @@ def build_session_candidates(
             "weekly_intent": weekly_intent,
             "priority": priority,
             "planning_limits": deepcopy(limits),
+            "weekly_dose": deepcopy(weekly_dose),
             "planner_policy": {
                 "interval_candidates_enabled": False,
                 "tempo_candidates_enabled": False,
@@ -390,20 +428,74 @@ def build_session_candidates(
                 ),
             }
 
-            candidates.append(
-                _candidate(
-                    candidate_id="running_easy",
-                    modality="running",
-                    session_type="easy_run",
-                    recommendation="recommended",
-                    intensity_cap="easy",
-                    delivery_mode="standalone",
-                    capacity_cost=1,
-                    source_decision=running_decision,
-                    reason=reason_map[running_decision],
-                    training_reference=_running_reference(training_profile),
-                )
+            running_count = resolved_dose_count(
+                "running",
+                legacy_default=1,
             )
+
+            if running_count == 0:
+                blocked_candidates.append(
+                    _blocked(
+                        "running_easy",
+                        "running",
+                        running_decision,
+                        (
+                            "Weekly dose resolver bu hafta "
+                            "standalone koşu seansı ayırmadı."
+                        ),
+                    )
+                )
+
+            else:
+                for index in range(
+                    1,
+                    running_count + 1,
+                ):
+                    candidate_id = (
+                        "running_easy"
+                        if index == 1
+                        else f"running_easy_{index}"
+                    )
+
+                    candidate = _candidate(
+                        candidate_id=candidate_id,
+                        modality="running",
+                        session_type="easy_run",
+                        recommendation="recommended",
+                        intensity_cap="easy",
+                        delivery_mode="standalone",
+                        capacity_cost=1,
+                        source_decision=running_decision,
+                        reason=reason_map[
+                            running_decision
+                        ],
+                        training_reference=(
+                            _running_reference(
+                                training_profile
+                            )
+                        ),
+                    )
+
+                    if dose_driven:
+                        candidate["dose_sequence"] = {
+                            "index": index,
+                            "target_count": (
+                                running_count
+                            ),
+                        }
+
+                        duration_hint = (
+                            weekly_dose.get(
+                                "running_duration_target_min"
+                            )
+                        )
+
+                        if duration_hint is not None:
+                            candidate[
+                                "duration_target_hint_min"
+                            ] = duration_hint
+
+                    candidates.append(candidate)
         else:
             blocked_candidates.append(
                 _blocked(
@@ -479,19 +571,54 @@ def build_session_candidates(
         config = cycling_map.get(cycling_decision)
 
         if config:
-            candidates.append(
-                _candidate(
-                    candidate_id=config["candidate_id"],
+            cycling_count = resolved_dose_count(
+                "cycling",
+                legacy_default=1,
+            )
+
+            for index in range(
+                1,
+                cycling_count + 1,
+            ):
+                base_candidate_id = (
+                    config["candidate_id"]
+                )
+
+                candidate_id = (
+                    base_candidate_id
+                    if index == 1
+                    else (
+                        f"{base_candidate_id}_{index}"
+                    )
+                )
+
+                candidate = _candidate(
+                    candidate_id=candidate_id,
                     modality=cycling_modality,
-                    session_type=config["session_type"],
-                    recommendation=config["recommendation"],
-                    intensity_cap=config["intensity_cap"],
+                    session_type=config[
+                        "session_type"
+                    ],
+                    recommendation=config[
+                        "recommendation"
+                    ],
+                    intensity_cap=config[
+                        "intensity_cap"
+                    ],
                     delivery_mode="standalone",
                     capacity_cost=1,
                     source_decision=cycling_decision,
                     reason=config["reason"],
                 )
-            )
+
+                if dose_driven:
+                    candidate["dose_sequence"] = {
+                        "index": index,
+                        "target_count": (
+                            cycling_count
+                        ),
+                    }
+
+                candidates.append(candidate)
         else:
             blocked_candidates.append(
                 _blocked(
@@ -531,11 +658,39 @@ def build_session_candidates(
         for candidate in candidates
     )
 
-    if strength_available and strength_decision in {
-        "recommended",
-        "recommended_light",
-        "optional",
-    }:
+    strength_count = resolved_dose_count(
+        "strength_or_mobility",
+        legacy_default=1,
+    )
+
+    strength_requested = (
+        _safe_int(
+            dose_requested.get(
+                "strength_or_mobility"
+            ),
+            default=0,
+            minimum=0,
+        )
+        if dose_driven
+        else 1
+    )
+
+    if (
+        strength_available
+        and strength_decision in {
+            "recommended",
+            "recommended_light",
+            "optional",
+        }
+        and (
+            strength_count > 0
+            or (
+                limits["max_sessions"] == 1
+                and has_main_candidate
+                and strength_requested > 0
+            )
+        )
+    ):
         add_on_only = limits["max_sessions"] == 1 and has_main_candidate
 
         recommendation = (
@@ -627,6 +782,7 @@ def build_session_candidates(
         "weekly_intent": weekly_intent,
         "priority": priority,
         "planning_limits": deepcopy(limits),
+        "weekly_dose": deepcopy(weekly_dose),
         "planner_policy": {
             "interval_candidates_enabled": False,
             "tempo_candidates_enabled": False,
