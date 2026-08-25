@@ -291,6 +291,15 @@ def build_steps(
             ),
             category="contract",
         ),
+        TestStep(
+            step_id="profile_isolation",
+            name="Profile Isolation Tests",
+            command=(
+                python_executable,
+                "run_profile_isolation_tests.py",
+            ),
+            category="integration",
+        ),
     ]
 
     if not skip_pipeline:
