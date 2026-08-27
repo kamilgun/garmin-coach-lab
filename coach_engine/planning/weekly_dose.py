@@ -52,6 +52,29 @@ def _round_to_step(
         * step
     )
 
+def _max_dose_adjustment(
+    *levels: Optional[str],
+) -> str:
+    rank = {
+        "none": 0,
+        "soft": 1,
+        "strong": 2,
+    }
+
+    normalized = [
+        level
+        for level in levels
+        if level in rank
+    ]
+
+    if not normalized:
+        return "none"
+
+    return max(
+        normalized,
+        key=lambda level: rank[level],
+    )
+
 
 def _has_cycling(
     modalities: Iterable[str],
@@ -293,6 +316,41 @@ def resolve_weekly_dose(
         ),
     )
 
+    recovery_constraint = final_decision.get(
+        "recovery_constraint",
+        context_signals.get(
+            "recovery_constraint",
+            "none",
+        ),
+    )
+
+    life_constraint = final_decision.get(
+        "life_constraint",
+        context_signals.get(
+            "life_constraint",
+            "none",
+        ),
+    )
+
+    context_dose_adjustment = (
+        _max_dose_adjustment(
+            recovery_constraint,
+            life_constraint,
+        )
+    )
+
+    if health_constraint in {
+        "recovering_illness",
+        "moderate_pain",
+        "mild_pain",
+    }:
+        context_dose_adjustment = (
+            _max_dose_adjustment(
+                context_dose_adjustment,
+                "strong",
+            )
+        )
+
     runs_analyzed = _safe_int(
         running_profile.get(
             "runs_analyzed"
@@ -318,6 +376,8 @@ def resolve_weekly_dose(
             "source": "safety_override",
             "weekly_intent": weekly_intent,
             "effective_capacity": 0,
+            "context_dose_adjustment": "hard",
+            "duration_policy": "no_structured_training",
             "requested_sessions": {
                 "running": 0,
                 "cycling": 0,
@@ -495,6 +555,47 @@ def resolve_weekly_dose(
             "Toparlanma niyeti nedeniyle standalone antrenman kapasitesi bir seansla sınırlandı."
         )
 
+    duration_policy = "normal"
+
+    if (
+        requested["running"] > 0
+        and context_dose_adjustment
+        in {"soft", "strong"}
+    ):
+        context_duration_cap = (
+            20
+            if context_dose_adjustment == "strong"
+            else 25
+        )
+
+        if running_duration_target_min is None:
+            running_duration_target_min = min(
+                context_duration_cap,
+                max_session_duration_min,
+            )
+        else:
+            running_duration_target_min = min(
+                running_duration_target_min,
+                context_duration_cap,
+                max_session_duration_min,
+            )
+
+        duration_policy = (
+            f"context_{context_dose_adjustment}_duration_reduction"
+        )
+
+        if context_dose_adjustment == "strong":
+            reasons.append(
+                "Güçlü toparlanma veya yaşam yükü kısıtı nedeniyle "
+                "koşu frekansı mümkün olduğunca korunurken seans "
+                "süresi belirgin biçimde azaltıldı."
+            )
+        else:
+            reasons.append(
+                "Toparlanma veya yaşam yükü sinyalleri nedeniyle "
+                "koşu frekansı korunurken seans süresi azaltıldı."
+            )
+
     if has_explicit_weekly_target:
         reasons.append(
             "Normal haftalık frekans hedefi athlete.weekly_target alanından alındı."
@@ -516,6 +617,8 @@ def resolve_weekly_dose(
         "source": source,
         "weekly_intent": weekly_intent,
         "priority": priority,
+        "context_dose_adjustment": context_dose_adjustment,
+        "duration_policy": duration_policy,
         "effective_capacity": effective_capacity,
         "requested_sessions": requested,
         "resolved_sessions": resolved,

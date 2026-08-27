@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Sequence
 
 
-TEST_SUITE_VERSION = "0.1.0"
+TEST_SUITE_VERSION = "0.2.0"
 DEFAULT_PIPELINE_START_DATE = "2026-07-31"
 DEFAULT_SUMMARY_PATH = Path("data") / "test_suite_summary.md"
 
@@ -200,6 +200,15 @@ def build_steps(
                 "run_scenario_matrix.py",
             ),
             category="scenario",
+        ),
+        TestStep(
+            step_id="weekly_dose",
+            name="Weekly Dose Tests",
+            command=(
+                python_executable,
+                "run_weekly_dose_tests.py",
+            ),
+            category="unit",
         ),
         TestStep(
             step_id="session_candidates",

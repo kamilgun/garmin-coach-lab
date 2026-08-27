@@ -280,6 +280,126 @@ def run_tests():
         "reason_code"
     ] == "insufficient_session_duration"
 
+    # 8. Weekly-dose duration hint is applied
+    # to multiple return-after-break runs.
+    dose_candidates = deepcopy(
+        current_candidates()
+    )
+
+    dose_candidates["weekly_intent"] = (
+        "return_after_break"
+    )
+
+    dose_candidates["planning_limits"] = {
+        "max_sessions": 3,
+        "max_session_duration_min": 45,
+        "available_days": [],
+        "available_modalities": [
+            "running",
+        ],
+    }
+
+    dose_candidates["candidates"] = [
+        {
+            "candidate_id": "running_easy",
+            "modality": "running",
+            "session_type": "easy_run",
+            "recommendation": "recommended",
+            "intensity_cap": "easy",
+            "delivery_mode": "standalone",
+            "standalone_capacity_cost": 1,
+            "source_decision": "easy_only",
+            "priority_rank": 1,
+            "duration_target_hint_min": 30,
+            "reason": "Controlled return run 1.",
+        },
+        {
+            "candidate_id": "running_easy_2",
+            "modality": "running",
+            "session_type": "easy_run",
+            "recommendation": "recommended",
+            "intensity_cap": "easy",
+            "delivery_mode": "standalone",
+            "standalone_capacity_cost": 1,
+            "source_decision": "easy_only",
+            "priority_rank": 2,
+            "duration_target_hint_min": 30,
+            "reason": "Controlled return run 2.",
+        },
+    ]
+
+    dose_selection = select_sessions(
+        base_context(),
+        dose_candidates,
+    )
+
+    assert dose_selection["session_count"] == 2
+
+    assert [
+        session["source_candidate_id"]
+        for session in dose_selection["sessions"]
+    ] == [
+        "running_easy",
+        "running_easy_2",
+    ]
+
+    assert [
+        session["duration"]["target_min"]
+        for session in dose_selection["sessions"]
+    ] == [
+        30,
+        30,
+    ]
+
+    assert all(
+        session["duration"]["method"]
+        == "weekly_dose_duration_hint"
+        for session in dose_selection["sessions"]
+    )
+
+    assert all(
+        session["duration"][
+            "weekly_dose_duration_hint_min"
+        ]
+        == 30
+        for session in dose_selection["sessions"]
+    )
+
+    # 9. Weekly-dose hint cannot bypass
+    # the binding session-duration cap.
+    capped_candidates = deepcopy(
+        dose_candidates
+    )
+
+    capped_candidates["planning_limits"][
+        "max_session_duration_min"
+    ] = 25
+
+    for candidate in capped_candidates[
+        "candidates"
+    ]:
+        candidate[
+            "duration_target_hint_min"
+        ] = 40
+
+    capped = select_sessions(
+        base_context(),
+        capped_candidates,
+    )
+
+    assert capped["session_count"] == 2
+
+    assert all(
+        session["duration"]["target_min"]
+        == 25
+        for session in capped["sessions"]
+    )
+
+    assert all(
+        session["duration"]["max"] <= 25
+        for session in capped["sessions"]
+    )
+
     print("All session selection tests passed.")
 
 

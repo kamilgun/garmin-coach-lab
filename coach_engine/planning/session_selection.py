@@ -145,17 +145,34 @@ def _running_duration(
     source_decision = candidate.get("source_decision")
 
     if source_decision == "controlled_increase":
-        base = observed_median * 1.10 if observed_median else 40
+        default_base = observed_median * 1.10 if observed_median else 40
         policy_cap = 45
-        method = "observed_median_plus_small_controlled_increase"
+        default_method = (
+            "observed_median_plus_small_controlled_increase"
+        )
+
     elif source_decision == "maintain_easy":
-        base = observed_median if observed_median else 35
+        default_base = observed_median if observed_median else 35
         policy_cap = 40
-        method = "maintain_observed_median"
+        default_method = "maintain_observed_median"
+
     else:
-        base = observed_median if observed_median else 30
+        default_base = observed_median if observed_median else 30
         policy_cap = 35
-        method = "restart_or_easy_only_from_observed_median"
+        default_method = (
+            "restart_or_easy_only_from_observed_median"
+        )
+
+    duration_hint = _safe_float(
+        candidate.get("duration_target_hint_min")
+    )
+
+    if duration_hint is not None:
+        base = duration_hint
+        method = "weekly_dose_duration_hint"
+    else:
+        base = default_base
+        method = default_method
 
     effective_max = min(available_max, policy_cap)
     target = _round_to_step(min(base, effective_max), step=5)
@@ -171,6 +188,7 @@ def _running_duration(
         {
             "method": method,
             "observed_median_duration_min": observed_median,
+            "weekly_dose_duration_hint_min": duration_hint,
         }
     )
     return guidance
