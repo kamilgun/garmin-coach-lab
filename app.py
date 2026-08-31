@@ -16,6 +16,9 @@ from coach_engine.presentation import (
     build_weekly_plan_view_model,
 )
 
+from coach_engine.artifact_io import (
+    load_json_file,
+)
 
 # Shared repository data.
 # Sample data belongs to the application, not to an athlete profile.
@@ -327,11 +330,20 @@ def ensure_data_dir():
 
 
 def load_json(path: Path, default=None):
-    if not path.exists():
-        return default
+    data, error = load_json_file(
+        path,
+        default=default,
+    )
 
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
+    if error is not None:
+        errors = st.session_state.setdefault(
+            "artifact_load_errors",
+            [],
+        )
+
+        errors.append(error)
+
+    return data
 
 
 def write_json(path: Path, data):
@@ -396,6 +408,66 @@ def run_local_pipeline(
     )
 
     return result
+
+def pipeline_error_message(
+    stderr: str,
+    *,
+    use_llm: bool,
+) -> str:
+    """
+    Pipeline stderr'ini kullanıcıya ham olarak göstermeden
+    bilinen config/runtime hatalarını anlaşılır mesaja çevirir.
+    """
+    stderr = stderr or ""
+
+    if "OPENAI_API_KEY placeholder" in stderr:
+        return (
+            "OpenAI API anahtarı geçerli değil. "
+            ".env dosyasındaki placeholder değeri gerçek bir API key ile değiştir "
+            "veya LLM seçeneğini kapat."
+        )
+
+    if (
+        "OPENAI_API_KEY tanımlı değil" in stderr
+        or "OPENAI_API_KEY bulunamadı" in stderr
+    ):
+        return (
+            "OpenAI API anahtarı tanımlı değil. "
+            ".env dosyasını kontrol et veya LLM seçeneğini kapat."
+        )
+
+    if "OPENAI_API_KEY boş" in stderr:
+        return (
+            "OpenAI API anahtarı boş. "
+            ".env dosyasını kontrol et veya LLM seçeneğini kapat."
+        )
+
+    if (
+        "bulunamadı veya aktif değil" in stderr
+        and "Profile '" in stderr
+    ):
+        return (
+            "Seçilen profil bulunamadı veya aktif değil. "
+            "Profil ayarlarını kontrol et."
+        )
+
+    if "Gerekli dosya bulunamadı:" in stderr:
+        return (
+            "Planı oluşturmak için gerekli local veri veya dosyalardan "
+            "biri bulunamadı. Teknik detayları kontrol et."
+        )
+
+    if use_llm:
+        return (
+            "Plan oluşturulurken bir hata oluştu. "
+            "LLM bağlantısını veya teknik detayları kontrol et. "
+            "İstersen LLM seçeneğini kapatıp tekrar deneyebilirsin."
+        )
+
+    return (
+        "Plan oluşturulurken bir hata oluştu. "
+        "Teknik detayları kontrol et."
+    )
 
 
 def find_label_by_value(options, value, fallback_label):
@@ -976,7 +1048,12 @@ def render_sidebar_actions(
             )
             st.rerun()
         else:
-            st.sidebar.error("Pipeline hata aldı.")
+            st.sidebar.error(
+                pipeline_error_message(
+                    result.stderr,
+                    use_llm=use_llm,
+                )
+            )
 
 
 def render_hero(coach_context):
@@ -2053,6 +2130,35 @@ def render_reports(
             if stderr:
                 st.code(stderr, language="text")
 
+def render_artifact_load_errors():
+    errors = st.session_state.get(
+        "artifact_load_errors",
+        [],
+    )
+
+    if not errors:
+        st.success(
+            "Bu render sırasında artifact okuma hatası yok."
+        )
+        return
+
+    st.warning(
+        f"{len(errors)} artifact okunamadı."
+    )
+
+    for error in errors:
+        st.markdown(
+            f"**{error.get('filename', 'unknown')}**"
+        )
+
+        st.code(
+            (
+                f"Type: {error.get('error_type')}\n"
+                f"Path: {error.get('path')}\n"
+                f"Detail: {error.get('message')}"
+            ),
+            language="text",
+        )
 
 def render_product_workspace(
     coach_context,
@@ -2096,6 +2202,20 @@ def render_product_workspace(
             expanded=False,
         ):
             render_status_pills()
+
+        artifact_errors = (
+            st.session_state.get(
+                "artifact_load_errors",
+                [],
+            )
+        )
+
+        if artifact_errors:
+            with st.expander(
+                "Artifact okuma hataları",
+                expanded=True,
+            ):
+                render_artifact_load_errors()
 
         st.divider()
 
@@ -2395,6 +2515,9 @@ def main():
     st.sidebar.divider()
 
     ensure_data_dir()
+    st.session_state[
+        "artifact_load_errors"
+    ] = []
 
     existing_context = load_json(
         MANUAL_CONTEXT_PATH,
@@ -2425,6 +2548,20 @@ def main():
         SESSION_SELECTION_PATH,
         default=None,
     )
+
+    artifact_load_errors = (
+        st.session_state.get(
+            "artifact_load_errors",
+            [],
+        )
+    )
+
+    if artifact_load_errors:
+        st.warning(
+            "Bazı local veri dosyaları okunamadı. "
+            "Sağlam veriler gösterilmeye devam ediyor. "
+            "Ayrıntılar Teknik Detaylar sekmesinde."
+        )
 
     render_hero(coach_context)
 
