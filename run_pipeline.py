@@ -4,6 +4,9 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from coach_engine.openai_config import (
+    validate_openai_api_key,
+)
 
 from coach_engine.workspace import (
     build_profile_runtime_env,
@@ -184,14 +187,23 @@ def preflight_check(args, python_executable, runtime,):
                 "Çözüm: python -m pip install -r requirements.txt"
             )
 
-        if os.getenv("OPENAI_API_KEY"):
-            print("OPENAI_API_KEY: OK")
-        else:
-            errors.append(
-                "OPENAI_API_KEY bulunamadı. "
-                ".env dosyası oluştur veya terminalde "
-                "OPENAI_API_KEY tanımla."
+    api_key_valid, api_key_error = (
+        validate_openai_api_key(
+            os.getenv("OPENAI_API_KEY")
+        )
+    )
+
+    if api_key_valid:
+        print("OPENAI_API_KEY: OK")
+    else:
+        errors.append(
+            (
+                api_key_error
+                or "OPENAI_API_KEY geçerli değil."
             )
+            + " .env dosyasını veya environment "
+            "variable değerini kontrol et."
+        )
 
     if errors:
         error_message = "\n".join(
