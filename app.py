@@ -19,6 +19,9 @@ from coach_engine.presentation import (
 from coach_engine.artifact_io import (
     load_json_file,
 )
+from coach_engine.artifact_lineage import (
+    validate_artifact_lineage,
+)
 
 # Shared repository data.
 # Sample data belongs to the application, not to an athlete profile.
@@ -2160,11 +2163,46 @@ def render_artifact_load_errors():
             language="text",
         )
 
+def render_artifact_lineage_status():
+    result = st.session_state.get(
+        "artifact_lineage"
+    )
+
+    if not result:
+        st.info(
+            "Artifact lineage henüz kontrol edilmedi."
+        )
+        return
+
+    if result["valid"]:
+        st.success(
+            "Artifact lineage tutarlı."
+        )
+        return
+
+    st.warning(
+        f"{result['issue_count']} lineage problemi bulundu."
+    )
+
+    for issue in result["issues"]:
+        st.markdown(
+            f"**{issue['artifact']}**"
+        )
+        st.code(
+            (
+                f"Code: {issue['code']}\n"
+                f"Detail: {issue['message']}"
+            ),
+            language="text",
+        )
+
+
 def render_product_workspace(
     coach_context,
     weekly_plan,
     session_candidates,
     session_selection,
+    artifact_lineage,
 ):
     plan_tab, data_tab, feedback_tab, technical_tab = st.tabs(
         [
@@ -2176,9 +2214,17 @@ def render_product_workspace(
     )
 
     with plan_tab:
+        weekly_plan_for_display = weekly_plan
+
+        if (
+            weekly_plan
+            and not artifact_lineage["valid"]
+        ):
+            weekly_plan_for_display = None
+
         render_weekly_plan_product(
             coach_context,
-            weekly_plan,
+            weekly_plan_for_display,
         )
 
         st.divider()
@@ -2216,6 +2262,13 @@ def render_product_workspace(
                 expanded=True,
             ):
                 render_artifact_load_errors()
+
+        if not artifact_lineage["valid"]:
+            with st.expander(
+                "Artifact lineage sorunları",
+                expanded=True,
+            ):
+                render_artifact_lineage_status()
 
         st.divider()
 
@@ -2549,6 +2602,17 @@ def main():
         default=None,
     )
 
+    artifact_lineage = validate_artifact_lineage(
+        coach_context,
+        session_candidates,
+        session_selection,
+        weekly_plan,
+    )
+
+    st.session_state[
+        "artifact_lineage"
+    ] = artifact_lineage
+
     artifact_load_errors = (
         st.session_state.get(
             "artifact_load_errors",
@@ -2563,6 +2627,14 @@ def main():
             "Ayrıntılar Teknik Detaylar sekmesinde."
         )
 
+    if not artifact_lineage["valid"]:
+        st.warning(
+            "Planlama dosyaları mevcut karar zinciri ile "
+            "uyumlu görünmüyor. Eski plan güvenli tarafta "
+            "kalmak için gösterilmiyor. "
+            "Planı yeniden oluştur."
+        )
+
     render_hero(coach_context)
 
     st.divider()
@@ -2572,6 +2644,7 @@ def main():
         weekly_plan,
         session_candidates,
         session_selection,
+        artifact_lineage,
     )
 
 

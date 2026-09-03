@@ -300,6 +300,35 @@ def build_steps(
             ),
             category="contract",
         ),
+          TestStep(
+            step_id="openai_config",
+            name="OpenAI Config Tests",
+            command=(
+                python_executable,
+                "run_openai_config_tests.py",
+            ),
+            category="config",
+        ),
+
+        TestStep(
+            step_id="artifact_io",
+            name="Artifact IO Resilience Tests",
+            command=(
+                python_executable,
+                "run_artifact_io_tests.py",
+            ),
+            category="resilience",
+        ),
+
+        TestStep(
+            step_id="artifact_lineage",
+            name="Artifact Lineage Tests",
+            command=(
+                python_executable,
+                "run_artifact_lineage_tests.py",
+            ),
+            category="resilience",
+        ),      
         TestStep(
             step_id="profile_isolation",
             name="Profile Isolation Tests",
