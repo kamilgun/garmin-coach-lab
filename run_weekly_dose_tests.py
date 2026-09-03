@@ -155,6 +155,56 @@ def run_tests():
     )
     assert dose["resolved_sessions"]["running"] == 1
 
+    # 9. Strong recovery constraint reduces duration
+    # without adding sessions or immediately removing
+    # established weekly frequency.
+    strong_recovery = deepcopy(context)
+
+    strong_recovery["context_signals"].update(
+        {
+            "recovery_constraint": "strong",
+            "life_constraint": "none",
+        }
+    )
+
+    strong_recovery["final_decision"].update(
+        {
+            "weekly_load": "reduce_or_maintain",
+            "priority": "recovery",
+            "recovery_constraint": "strong",
+            "life_constraint": "none",
+        }
+    )
+
+    dose = resolve_weekly_dose(
+        strong_recovery
+    )
+
+    assert (
+        dose["context_dose_adjustment"]
+        == "strong"
+    )
+
+    assert (
+        dose["duration_policy"]
+        == "context_strong_duration_reduction"
+    )
+
+    assert (
+        dose["frequency_policy"]
+        == "preserve_frequency_reduce_duration"
+    )
+
+    assert (
+        dose["resolved_sessions"]["running"]
+        == 2
+    )
+
+    assert (
+        dose["running_duration_target_min"]
+        == 20
+    )
+
     print("All weekly dose tests passed.")
 
 
