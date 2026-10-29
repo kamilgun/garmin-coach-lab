@@ -1,0 +1,14 @@
+README.md
+  h_bb1081593bb41b 90,115,1019,1027,1029,1031,1033-1044,1046,1048,1050-1052,1054-1058,1060-1064,1066,1068-1071,1073,1075-1078,1080,1082,1084-1085,1089
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ff881deeb734c0f041c8c38457f59e188bea1557",
+  "prompts": {},
+  "humans": {
+    "h_bb1081593bb41b": {
+      "author": "KAMIL <kamil.gun@turkcell.com.tr>"
+    }
+  }
+}
