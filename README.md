@@ -87,7 +87,7 @@ Final result:
 
 ## Current status
 
-This repository is a **single-user local MVP**.
+This repository contains the **local-first, multi-profile `v0.1.0` MVP**.
 
 It can currently:
 
@@ -112,7 +112,7 @@ It can currently:
 - validate decision and planning behavior with scenario and integration tests
 - provide a local Streamlit check-in and technical report interface
 
-The current UI does **not yet** provide a dedicated weekly-plan card or calendar experience. That is the next product milestone.
+The current Streamlit UI provides weekly check-in, profile selection, weekly-plan cards, decision/context views, feedback capture, and technical diagnostics. A richer calendar-style planning experience is intentionally deferred beyond `v0.1.0`.
 
 ---
 
@@ -1016,7 +1016,7 @@ The current MVP does not yet:
 - model terrain, temperature, wind, or route difficulty
 - normalize pace for elevation
 - provide medical diagnosis
-- support multiple users
+- provide hosted multi-user accounts
 - provide cloud authentication or hosted secret management
 - write workouts back to Garmin
 
@@ -1024,65 +1024,69 @@ These are explicit product boundaries, not hidden capabilities.
 
 ---
 
-## Roadmap to v1.0
+## Roadmap
 
-### Phase 8.1 — Consolidation
+### v0.1.0 — Local Coaching MVP
 
-- update architecture and repository documentation
-- standardize artifact contracts and metadata
-- consolidate tests under one entry point
-- simplify the technical weekly review
-- complete a privacy and tracked-file verification
+Current release scope:
 
-### Phase 9 — Weekly Plan Product UI
+- local multi-profile athlete workspaces
+- Garmin activity and performance ingestion
+- weekly life, recovery, health, availability, and equipment check-in
+- deterministic coaching decisions
+- context-aware weekly dose calibration
+- session candidate generation and selection
+- rolling seven-day scheduling
+- explainable weekly-plan product UI
+- optional constrained LLM coach message
+- artifact lineage and runtime-resilience checks
+- OpenAI configuration preflight
+- consolidated deterministic regression suite
 
-- weekly-plan summary cards
-- session cards
-- alternative-date display
-- “Why this plan?” explanations
-- clearer separation between product and debug views
+Core product rule:
 
-### Phase 10 — Plan Execution and Feedback
+> **Rules decide. Planner schedules. LLM explains.**
 
-- plan history
-- session completion states
-- rescheduling and skipping
+### v0.2 — Execution and Adherence
+
+- planned-vs-completed session tracking
 - Garmin activity reconciliation
-- session difficulty feedback
-- weekly outcome artifact
+- skip and reschedule states
+- adherence history
+- weekly outcome summaries
 
-### Phase 11 — Deterministic Personalization
+### v0.3 — Adaptive Coaching
 
-- adherence metrics
-- recent difficulty trends
-- recent pain-event signals
-- duration-tolerance updates
-- feedback-aware deterministic rules
+- deterministic use of adherence history
+- recent session-difficulty trends
+- feedback-aware dose adjustments
+- pain-event and tolerance signals
+- controlled progression rules
 
-### Phase 12 — Quality and Release Hardening
+### v0.4 — Race Planning
 
-- formal artifact validation
-- safety-matrix expansion
-- data freshness warnings
-- idempotency and replay tests
-- controlled failure handling
-- privacy review
+- race date and distance targets
+- interval, tempo, and long-run prescriptions
+- progression and taper logic
+- race-specific training blocks
 
-### Phase 13 — Portfolio and v1.0 Release
+### v0.5+ — Long-Term Planning
 
-- final architecture assets
-- public demo scenarios
-- product screenshots
-- short demo video
-- technical case study
-- tagged `v1.0.0` release
+- multi-week training blocks
+- periodization
+- longer-term progression models
+- plan-history analytics
 
-Possible post-v1.0 work:
+### Toward v1.0
 
+Possible later work:
+
+- hosted authentication and encrypted secret management
+- cloud-backed multi-user workspaces
 - Garmin workout export
 - calendar integration
 - mobile client
-- hosted multi-user service
+- public demo and portfolio assets
 
 ---
 
